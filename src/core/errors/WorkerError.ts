@@ -10,6 +10,7 @@ export class WorkerError extends Error {
   public readonly code: ErrorCode;
   public readonly status: number;
   public readonly details?: unknown;
+  public readonly timestamp: number;
 
   constructor(params: {
     code: ErrorCode;
@@ -21,7 +22,39 @@ export class WorkerError extends Error {
 
     this.name = "WorkerError";
     this.code = params.code;
-    this.status = params.status ?? 500;
     this.details = params.details;
+    this.timestamp = Date.now();
+
+    // 👇 مهم: status درست از روی code ساخته میشه
+    this.status = params.status ?? WorkerError.mapStatus(params.code);
+  }
+
+  private static mapStatus(code: ErrorCode): number {
+    switch (code) {
+      case "VALIDATION_ERROR":
+        return 400;
+      case "UNAUTHORIZED":
+        return 401;
+      case "FORBIDDEN":
+        return 403;
+      case "NOT_FOUND":
+        return 404;
+      case "RATE_LIMITED":
+        return 429;
+      case "INTERNAL_ERROR":
+      default:
+        return 500;
+    }
+  }
+
+  public toJSON() {
+    return {
+      name: this.name,
+      code: this.code,
+      status: this.status,
+      message: this.message,
+      details: this.details,
+      timestamp: this.timestamp,
+    };
   }
 }

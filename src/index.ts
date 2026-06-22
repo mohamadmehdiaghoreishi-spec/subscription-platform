@@ -1,25 +1,19 @@
+import { ErrorBoundary } from "./core/errors/ErrorBoundary";
+import { SubscriptionPipeline } from "./pipeline/SubscriptionPipeline";
+
 export default {
-  async fetch(request: Request) {
-    const url = new URL(request.url);
+  async fetch(request: Request): Promise<Response> {
+    try {
+      const pipeline = new SubscriptionPipeline();
+      const result = await pipeline.execute(request);
 
-    if (url.pathname === "/") {
-      return new Response("Subscription Platform Running 🚀");
+      return new Response(result, {
+        headers: {
+          "Content-Type": "text/plain",
+        },
+      });
+    } catch (err) {
+      return ErrorBoundary.handle(err);
     }
-
-    if (url.pathname === "/sub") {
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          message: "Subscription endpoint is alive"
-        }),
-        {
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
-      );
-    }
-
-    return new Response("Not Found", { status: 404 });
-  }
-}
+  },
+};
