@@ -1,0 +1,8 @@
+name = "subscription-platform"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "subscription-db"
+database_id = "REPLACE_ME"
