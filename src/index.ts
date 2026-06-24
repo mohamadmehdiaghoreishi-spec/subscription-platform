@@ -1,7 +1,6 @@
 import { SubscriptionPipeline } from "./pipeline/SubscriptionPipeline";
 import { ErrorBoundary } from "./core/errors/ErrorBoundary";
 
-
 export interface Env {
   DB: D1Database;
 }
@@ -14,39 +13,47 @@ export default {
     env: Env
   ): Promise<Response> {
 
-
     try {
-
 
       const url = new URL(request.url);
 
 
-      if (
-        url.pathname === "/favicon.ico" ||
-        url.pathname === "/robots.txt"
-      ) {
+      if (url.pathname === "/") {
 
-        return new Response(null, {
-          status: 204
-        });
+        return new Response(
+          JSON.stringify({
+            status: "ok",
+            message: "Subscription Platform Root",
+            timestamp: Date.now()
+          }),
+          {
+            status: 200,
+            headers:{
+              "Content-Type":"application/json"
+            }
+          }
+        );
 
       }
 
 
+      const pipeline =
+        new SubscriptionPipeline(env.DB);
 
-      const pipeline = new SubscriptionPipeline(env.DB);
 
-
-      const result = await pipeline.execute(request);
+      const result =
+        await pipeline.execute(request);
 
 
 
       return new Response(
-        JSON.stringify(result, null, 2),
+        typeof result === "string"
+          ? result
+          : JSON.stringify(result),
         {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json"
+          status:200,
+          headers:{
+            "Content-Type":"application/json"
           }
         }
       );
@@ -55,22 +62,24 @@ export default {
     } catch(error) {
 
 
-      console.error("Worker Error:", error);
-
-
-      const safe = ErrorBoundary.toResponse(error);
+      const safe =
+        ErrorBoundary.toResponse(error);
 
 
       return new Response(
-        JSON.stringify(safe, null, 2),
+        JSON.stringify(safe),
         {
-          status: (error as any)?.statusCode ?? 500,
+          status:
+            error instanceof Error &&
+            "status" in error
+              ? Number((error as any).status)
+              : 500,
+
           headers:{
             "Content-Type":"application/json"
           }
         }
       );
-
 
     }
 

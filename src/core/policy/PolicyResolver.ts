@@ -1,17 +1,43 @@
+import { WorkerError } from "../errors/WorkerError";
+import { ErrorCode } from "../errors/ErrorCode";
+
+
 export class PolicyResolver {
-  check(request: Request): void {
-    const url = new URL(request.url);
 
-    // Allow root and /sub
-    if (url.pathname === "/" || url.pathname === "/sub" || url.pathname.startsWith("/sub/")) {
-      return; // OK
-    }
 
-    throw {
-      name: "WorkerError",
-      code: "FORBIDDEN",
-      status: 403,
-      message: "Access denied"
-    };
-  }
+static check(request:Request){
+
+
+const url = new URL(request.url);
+
+
+
+if(
+url.pathname === "/" ||
+url.pathname.startsWith("/sub")
+){
+
+return true;
+
+}
+
+
+
+throw new WorkerError({
+
+code:ErrorCode.FORBIDDEN,
+
+message:"Access denied",
+
+metadata:{
+path:url.pathname
+}
+
+});
+
+
+}
+
+
+
 }

@@ -1,34 +1,97 @@
-import { PolicyResolver } from "../core/policy/PolicyResolver";
+import { WorkerError, ErrorCode } from "../core/errors/WorkerError";
+
 
 export class SubscriptionPipeline {
-  async execute(request: Request): Promise<any> {
-    const policy = new PolicyResolver();
-    policy.check(request);
+
+
+  constructor(
+    private db?: D1Database
+  ) {}
+
+
+
+  async execute(request: Request): Promise<Response> {
+
 
     const url = new URL(request.url);
 
-    if (url.pathname === "/") {
-      return {
-        status: "ok",
-        message: "Subscription Platform Root",
-        timestamp: Date.now()
-      };
-    }
+
 
     if (url.pathname === "/sub") {
-      return {
-        status: "ok",
-        message: "Subscription Endpoint Ready 🚀",
-        endpoint: "/sub",
-        timestamp: Date.now()
-      };
+
+
+      return new Response(
+
+        JSON.stringify({
+
+          status: "ok",
+
+          endpoint: "/sub",
+
+          timestamp: Date.now()
+
+        }),
+
+        {
+          status: 200,
+
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+
+      );
+
+
     }
 
-    throw {
-      name: "WorkerError",
-      code: "NOT_FOUND",
-      status: 404,
-      message: "Route not found"
-    };
+
+
+    if (url.pathname === "/") {
+
+
+      return new Response(
+
+        JSON.stringify({
+
+          status: "ok",
+
+          message: "Subscription Platform Root",
+
+          timestamp: Date.now()
+
+        }),
+
+        {
+          status:200,
+
+          headers:{
+            "Content-Type":"application/json"
+          }
+        }
+
+      );
+
+    }
+
+
+
+    throw new WorkerError({
+
+      code: ErrorCode.NOT_FOUND,
+
+      message: "Route not found",
+
+      details: {
+
+        path: url.pathname
+
+      }
+
+    });
+
+
   }
+
+
 }
