@@ -1,14 +1,17 @@
-import { WorkerError } from "../errors/WorkerError";
-
 export class PolicyResolver {
-  async check(request: Request): Promise<void> {
+  check(request: Request): void {
     const url = new URL(request.url);
 
-    if (!url.pathname.startsWith("/sub")) {
-      throw new WorkerError({
-        code: "FORBIDDEN",
-        message: "Access denied",
-      });
+    // Allow root and /sub
+    if (url.pathname === "/" || url.pathname === "/sub" || url.pathname.startsWith("/sub/")) {
+      return; // OK
     }
+
+    throw {
+      name: "WorkerError",
+      code: "FORBIDDEN",
+      status: 403,
+      message: "Access denied"
+    };
   }
 }

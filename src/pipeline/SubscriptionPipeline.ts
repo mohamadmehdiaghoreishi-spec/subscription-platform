@@ -1,23 +1,34 @@
-import { WorkerError } from "../core/errors/WorkerError";
 import { PolicyResolver } from "../core/policy/PolicyResolver";
 
 export class SubscriptionPipeline {
-  async execute(request: Request): Promise<string> {
+  async execute(request: Request): Promise<any> {
     const policy = new PolicyResolver();
-
-    // بررسی قوانین
-    await policy.check(request);
+    policy.check(request);
 
     const url = new URL(request.url);
 
-    // اگر رسید اینجا یعنی اجازه دارد
-    if (url.pathname === "/sub") {
-      return "Pipeline working 🚀";
+    if (url.pathname === "/") {
+      return {
+        status: "ok",
+        message: "Subscription Platform Root",
+        timestamp: Date.now()
+      };
     }
 
-    throw new WorkerError({
+    if (url.pathname === "/sub") {
+      return {
+        status: "ok",
+        message: "Subscription Endpoint Ready 🚀",
+        endpoint: "/sub",
+        timestamp: Date.now()
+      };
+    }
+
+    throw {
+      name: "WorkerError",
       code: "NOT_FOUND",
-      message: "Route not found",
-    });
+      status: 404,
+      message: "Route not found"
+    };
   }
 }
