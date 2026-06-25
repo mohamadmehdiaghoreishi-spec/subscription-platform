@@ -28,6 +28,7 @@ import { SubscriptionContext } from "../core/context/SubscriptionContext";
 
 
 
+
 export class SubscriptionPipeline {
 
 
@@ -35,10 +36,8 @@ export class SubscriptionPipeline {
     new PolicyResolver();
 
 
-
   private selector =
     new NodeSelector();
-
 
 
   private builder =
@@ -46,21 +45,19 @@ export class SubscriptionPipeline {
 
 
 
+  private auth:AuthGuard;
 
-  private auth: AuthGuard;
+  private apiKeyService:ApiKeyService;
 
-  private apiKeyService: ApiKeyService;
+  private quota:QuotaGuard;
 
-  private quota: QuotaGuard;
+  private usageLogger:UsageLogger;
 
-  private usageLogger: UsageLogger;
+  private executor:ExecutorRegistry;
 
-  private executor: ExecutorRegistry;
+  private billingEngine:BillingEngine;
 
-  private billingEngine: BillingEngine;
-
-  private paymentService: PaymentService;
-
+  private paymentService:PaymentService;
 
 
 
@@ -69,25 +66,20 @@ export class SubscriptionPipeline {
   ){
 
 
-
     const subscriptionRepo =
       new D1SubscriptionRepository(db);
-
 
 
     const apiKeyRepo =
       new D1ApiKeyRepository(db);
 
 
-
     const usageRepo =
       new D1UsageRepository(db);
 
 
-
     const billingRepo =
       new D1BillingRepository(db);
-
 
 
 
@@ -97,12 +89,10 @@ export class SubscriptionPipeline {
       );
 
 
-
     this.apiKeyService =
       new ApiKeyService(
         apiKeyRepo
       );
-
 
 
     this.quota =
@@ -111,12 +101,10 @@ export class SubscriptionPipeline {
       );
 
 
-
     this.usageLogger =
       new UsageLogger(
         usageRepo
       );
-
 
 
     this.executor =
@@ -125,30 +113,21 @@ export class SubscriptionPipeline {
       );
 
 
-
     this.billingEngine =
       new BillingEngine(
-
         usageRepo,
-
         billingRepo
-
       );
-
 
 
     this.paymentService =
       new PaymentService(
-
         new StripeClient(
           "STRIPE_SECRET_KEY"
         )
-
       );
 
-
   }
-
 
 
 
@@ -160,12 +139,10 @@ export class SubscriptionPipeline {
   ):Promise<unknown>{
 
 
-
     const url =
       new URL(
         request.url
       );
-
 
 
     const method =
@@ -174,12 +151,6 @@ export class SubscriptionPipeline {
 
 
 
-
-
-
-    // =====================
-    // CREATE API KEY
-    // =====================
 
 
     if(
@@ -198,12 +169,10 @@ export class SubscriptionPipeline {
 
       if(!body.subscriptionId){
 
-
         throw new WorkerError({
 
           code:
             ErrorCode.BAD_REQUEST,
-
 
           message:
             "subscriptionId required"
@@ -214,16 +183,10 @@ export class SubscriptionPipeline {
 
 
 
-
-
       const key =
         await this.apiKeyService.create(
-
           body.subscriptionId
-
         );
-
-
 
 
       return {
@@ -242,11 +205,6 @@ export class SubscriptionPipeline {
 
 
 
-    // =====================
-    // STRIPE WEBHOOK
-    // =====================
-
-
     if(
       url.pathname === "/webhook/stripe"
       &&
@@ -258,7 +216,6 @@ export class SubscriptionPipeline {
         await request.text();
 
 
-
       const signature =
         request.headers.get(
           "stripe-signature"
@@ -268,38 +225,29 @@ export class SubscriptionPipeline {
 
       const valid =
         await this.paymentService.verifyWebhook(
-
           payload,
-
           signature
-
         );
 
 
-
       if(!valid){
-
 
         throw new WorkerError({
 
           code:
             ErrorCode.UNAUTHORIZED,
 
-
           message:
             "Invalid webhook"
 
         });
 
-
       }
-
 
 
 
       const event =
         JSON.parse(payload);
-
 
 
 
@@ -310,9 +258,7 @@ export class SubscriptionPipeline {
 
 
         const subscriptionId =
-          event.data.object
-          .metadata
-          .subscriptionId;
+          event.data.object.metadata.subscriptionId;
 
 
 
@@ -324,9 +270,7 @@ export class SubscriptionPipeline {
 
         );
 
-
       }
-
 
 
 
@@ -336,18 +280,12 @@ export class SubscriptionPipeline {
 
       };
 
-
     }
 
 
 
 
 
-
-
-    // =====================
-    // AUTH
-    // =====================
 
 
     const context:SubscriptionContext =
@@ -361,9 +299,87 @@ export class SubscriptionPipeline {
 
 
 
+
     // =====================
-    // POLICY
+    // API KEY MANAGEMENT
     // =====================
+
+
+    if(
+      url.pathname === "/auth/keys"
+      &&
+      method === "GET"
+    ){
+
+
+      const keys =
+        await this.apiKeyService.list(
+          context.subscriptionId
+        );
+
+
+      return {
+
+        success:true,
+
+        data:keys
+
+      };
+
+    }
+
+
+
+
+
+    if(
+      url.pathname === "/auth/revoke-key"
+      &&
+      method === "POST"
+    ){
+
+
+      const body =
+        await request.json() as {
+          key:string;
+        };
+
+
+
+      if(!body.key){
+
+        throw new WorkerError({
+
+          code:
+            ErrorCode.BAD_REQUEST,
+
+          message:
+            "key required"
+
+        });
+
+      }
+
+
+
+      await this.apiKeyService.revoke(
+        body.key
+      );
+
+
+      return {
+
+        success:true
+
+      };
+
+    }
+
+
+
+
+
+
 
 
     await this.policy.check(
@@ -376,12 +392,6 @@ export class SubscriptionPipeline {
 
 
 
-
-    // =====================
-    // BILLING CHECKOUT
-    // =====================
-
-
     if(
       url.pathname === "/billing/checkout"
       &&
@@ -389,12 +399,10 @@ export class SubscriptionPipeline {
     ){
 
 
-
       const body =
         await request.json() as {
           plan:string;
         };
-
 
 
 
@@ -409,7 +417,6 @@ export class SubscriptionPipeline {
 
 
 
-
       return {
 
         success:true,
@@ -417,7 +424,6 @@ export class SubscriptionPipeline {
         data:session
 
       };
-
 
     }
 
@@ -427,15 +433,9 @@ export class SubscriptionPipeline {
 
 
 
-    // =====================
-    // BILLING INVOICE
-    // =====================
-
-
     if(
       url.pathname === "/billing/invoice"
     ){
-
 
 
       const invoice =
@@ -446,8 +446,6 @@ export class SubscriptionPipeline {
         );
 
 
-
-
       return {
 
         success:true,
@@ -456,18 +454,12 @@ export class SubscriptionPipeline {
 
       };
 
-
     }
 
 
 
 
 
-
-
-    // =====================
-    // QUOTA
-    // =====================
 
 
     await this.quota.check(
@@ -484,12 +476,6 @@ export class SubscriptionPipeline {
 
 
 
-
-    // =====================
-    // SUBSCRIBE
-    // =====================
-
-
     if(
       url.pathname === "/subscribe"
       &&
@@ -497,10 +483,8 @@ export class SubscriptionPipeline {
     ){
 
 
-
       const body =
         await request.json();
-
 
 
 
@@ -508,7 +492,6 @@ export class SubscriptionPipeline {
         await this.selector.select(
           request
         );
-
 
 
 
@@ -523,13 +506,9 @@ export class SubscriptionPipeline {
 
 
 
-
       await this.executor.persist(
-
         subscription
-
       );
-
 
 
 
@@ -543,17 +522,14 @@ export class SubscriptionPipeline {
 
 
 
-
       await this.usageLogger.log({
 
         subscriptionId:
           context.subscriptionId,
 
-
         request
 
       });
-
 
 
 
@@ -565,7 +541,6 @@ export class SubscriptionPipeline {
 
       };
 
-
     }
 
 
@@ -574,23 +549,15 @@ export class SubscriptionPipeline {
 
 
 
-    // =====================
-    // SUB
-    // =====================
-
-
     if(
       url.pathname === "/sub"
     ){
-
 
 
       const node =
         await this.selector.select(
           request
         );
-
-
 
 
       const result =
@@ -604,17 +571,14 @@ export class SubscriptionPipeline {
 
 
 
-
       await this.usageLogger.log({
 
         subscriptionId:
           context.subscriptionId,
 
-
         request
 
       });
-
 
 
 
@@ -625,7 +589,6 @@ export class SubscriptionPipeline {
         data:result
 
       };
-
 
     }
 
@@ -657,7 +620,6 @@ export class SubscriptionPipeline {
       }
 
     });
-
 
 
   }
