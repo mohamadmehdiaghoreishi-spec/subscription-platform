@@ -1,43 +1,15 @@
-import { SelectedNode } from "../routing/NodeSelector";
-
 import { D1SubscriptionRepository } from "../../infrastructure/d1/D1SubscriptionRepository";
-
-import {
-  SubscriptionEntity
-} from "../../domain/repositories/SubscriptionRepository";
-
-
-
-export type ExecutionResult = {
-
-  success:boolean;
-
-  data:unknown;
-
-};
-
-
+import { SubscriptionEntity } from "../../domain/repositories/SubscriptionRepository";
+import { SubscriptionStatus } from "../../domain/entities/SubscriptionStatus";
+import { SelectedNode } from "../routing/NodeSelector";
 
 
 export class ExecutorRegistry {
 
 
-  private repository:D1SubscriptionRepository;
-
-
-
-
   constructor(
-    repository:D1SubscriptionRepository
-  ){
-
-    this.repository =
-      repository;
-
-  }
-
-
-
+    private repository:D1SubscriptionRepository
+  ){}
 
 
 
@@ -51,7 +23,6 @@ export class ExecutorRegistry {
   ):Promise<SubscriptionEntity>{
 
 
-
     return {
 
       id:
@@ -63,7 +34,7 @@ export class ExecutorRegistry {
 
 
       status:
-        "created",
+        SubscriptionStatus.CREATED,
 
 
       payload,
@@ -74,9 +45,7 @@ export class ExecutorRegistry {
 
     };
 
-
   }
-
 
 
 
@@ -85,15 +54,14 @@ export class ExecutorRegistry {
 
   async persist(
 
-    entity:SubscriptionEntity
+    subscription:SubscriptionEntity
 
-  ):Promise<SubscriptionEntity>{
-
+  ){
 
 
     return this.repository.create(
 
-      entity
+      subscription
 
     );
 
@@ -104,38 +72,29 @@ export class ExecutorRegistry {
 
 
 
-
   async execute(
 
     node:SelectedNode,
 
-    payload:unknown
+    subscription:SubscriptionEntity
 
-  ):Promise<ExecutionResult>{
+  ){
 
 
 
     return {
 
-      success:true,
+      executed:true,
+
+      node:
+        node.type,
 
 
-      data:{
-
-
-        engine:
-          this.resolveEngine(
-            node.type
-          ),
-
-
-        payload
-
-
-      }
-
+      subscriptionId:
+        subscription.id
 
     };
+
 
   }
 
@@ -149,10 +108,9 @@ export class ExecutorRegistry {
 
     id:string,
 
-    status:string
+    status:SubscriptionStatus
 
   ):Promise<void>{
-
 
 
     await this.repository.updateStatus(
@@ -163,6 +121,20 @@ export class ExecutorRegistry {
 
     );
 
+  }
+
+
+
+
+
+
+
+
+  async listSubscriptions(){
+
+
+    return this.repository.list();
+
 
   }
 
@@ -172,36 +144,18 @@ export class ExecutorRegistry {
 
 
 
-  private resolveEngine(
+  async getSubscription(
 
-    nodeType:string
+    id:string
 
-  ):string{
-
-
-
-    switch(nodeType){
+  ){
 
 
+    return this.repository.findById(
 
-      case "premium":
+      id
 
-        return "premium-executor";
-
-
-
-      case "fallback":
-
-        return "fallback-executor";
-
-
-
-      default:
-
-        return "default-executor";
-
-
-    }
+    );
 
 
   }

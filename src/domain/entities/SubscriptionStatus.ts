@@ -1,11 +1,11 @@
 export enum SubscriptionStatus {
 
-  ACTIVE = "ACTIVE",
+  CREATED = "created",
 
-  PAST_DUE = "PAST_DUE",
+  ACTIVE = "ACTIVE",
 
   CANCELED = "CANCELED",
 
-  TRIAL = "TRIAL"
+  FAILED = "FAILED"
 
 }
