@@ -14,6 +14,7 @@ export class ExecutorRegistry {
 
 
 
+
   async createSubscription(
 
     node:SelectedNode,
@@ -52,6 +53,7 @@ export class ExecutorRegistry {
 
 
 
+
   async persist(
 
     subscription:SubscriptionEntity
@@ -72,6 +74,8 @@ export class ExecutorRegistry {
 
 
 
+
+
   async execute(
 
     node:SelectedNode,
@@ -86,6 +90,7 @@ export class ExecutorRegistry {
 
       executed:true,
 
+
       node:
         node.type,
 
@@ -97,6 +102,9 @@ export class ExecutorRegistry {
 
 
   }
+
+
+
 
 
 
@@ -130,13 +138,33 @@ export class ExecutorRegistry {
 
 
 
-  async listSubscriptions(){
+
+  async listSubscriptions(
+
+    subscriptionId:string
+
+  ):Promise<SubscriptionEntity[]>{
 
 
-    return this.repository.list();
+    const subscriptions =
+
+      await this.repository.list();
+
+
+
+
+    return subscriptions.filter(
+
+      subscription =>
+
+        subscription.id === subscriptionId
+
+    );
 
 
   }
+
+
 
 
 
@@ -148,7 +176,7 @@ export class ExecutorRegistry {
 
     id:string
 
-  ){
+  ):Promise<SubscriptionEntity | null>{
 
 
     return this.repository.findById(

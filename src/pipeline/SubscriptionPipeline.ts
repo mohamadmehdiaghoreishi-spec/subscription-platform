@@ -228,10 +228,12 @@ method === "POST"
 ){
 
 
+
 const body =
 await request.json() as {
 subscriptionId:string;
 };
+
 
 
 
@@ -270,8 +272,8 @@ data:key
 
 };
 
-
 }
+
 
 
 
@@ -321,6 +323,7 @@ throw new WorkerError({
 code:
 ErrorCode.UNAUTHORIZED,
 
+
 message:
 "Invalid webhook"
 
@@ -367,8 +370,9 @@ success:true
 
 };
 
-
 }
+
+
 
 
 
@@ -389,7 +393,6 @@ request
 
 
 
-
 await this.policy.check(
 
 request
@@ -399,44 +402,45 @@ request
 
 
 
-// =====================
-// BILLING CHECKOUT
-// =====================
+
+
+
 
 
 if(
-  url.pathname === "/billing/checkout"
-  &&
-  method === "POST"
+url.pathname === "/billing/checkout"
+&&
+method === "POST"
 ){
 
 
-  const body =
-  await request.json() as {
-    plan:string;
-  };
+
+const body =
+await request.json() as {
+plan:string;
+};
 
 
 
-  const session =
-  await this.paymentService.createCheckout(
+const session =
 
-    context.subscriptionId,
+await this.paymentService.createCheckout(
 
-    body.plan
+context.subscriptionId,
 
-  );
+body.plan
+
+);
 
 
 
-  return {
+return {
 
-    success:true,
+success:true,
 
-    data:session
+data:session
 
-  };
-
+};
 
 }
 
@@ -446,34 +450,31 @@ if(
 
 
 
-// =====================
-// BILLING INVOICE
-// =====================
 
 
 if(
-  url.pathname === "/billing/invoice"
+url.pathname === "/billing/invoice"
 ){
 
 
 
-  const invoice =
-  await this.billingEngine.generateInvoice(
+const invoice =
 
-    context.subscriptionId
+await this.billingEngine.generateInvoice(
 
-  );
+context.subscriptionId
+
+);
 
 
 
-  return {
+return {
 
-    success:true,
+success:true,
 
-    data:invoice
+data:invoice
 
-  };
-
+};
 
 }
 
@@ -483,36 +484,33 @@ if(
 
 
 
-// =====================
-// AUTH KEYS LIST
-// =====================
 
 
 if(
-  url.pathname === "/auth/keys"
-  &&
-  method === "GET"
+url.pathname === "/auth/keys"
+&&
+method === "GET"
 ){
 
 
 
-  const keys =
-  await this.apiKeyService.list(
+const keys =
 
-    context.subscriptionId
+await this.apiKeyService.list(
 
-  );
+context.subscriptionId
+
+);
 
 
 
-  return {
+return {
 
-    success:true,
+success:true,
 
-    data:keys
+data:keys
 
-  };
-
+};
 
 }
 
@@ -522,40 +520,39 @@ if(
 
 
 
-// =====================
-// AUTH KEY REVOKE
-// =====================
 
 
 if(
-  url.pathname === "/auth/revoke-key"
-  &&
-  method === "POST"
+url.pathname === "/auth/revoke-key"
+&&
+method === "POST"
 ){
 
 
 
-  const body =
-  await request.json() as {
-    key:string;
-  };
+const body =
+
+await request.json() as {
+
+key:string;
+
+};
 
 
 
-  await this.apiKeyService.revoke(
+await this.apiKeyService.revoke(
 
-    body.key
+body.key
 
-  );
+);
 
 
 
-  return {
+return {
 
-    success:true
+success:true
 
-  };
-
+};
 
 }
 
@@ -565,16 +562,13 @@ if(
 
 
 
-// =====================
-// QUOTA
-// =====================
 
 
 await this.quota.check(
 
-  context.subscriptionId,
+context.subscriptionId,
 
-  "FREE"
+"FREE"
 
 );
 
@@ -585,93 +579,93 @@ await this.quota.check(
 
 
 
-// =====================
-// SUBSCRIBE
-// =====================
-
 
 if(
-  url.pathname === "/subscribe"
-  &&
-  method === "POST"
+url.pathname === "/subscribe"
+&&
+method === "POST"
 ){
 
 
 
-  const body =
-  await request.json();
+const body =
 
-
-
-
-  const node =
-  await this.selector.select(
-
-    request
-
-  );
-
-
-
-
-  const subscription =
-  await this.executor.createSubscription(
-
-    node,
-
-    body
-
-  );
+await request.json();
 
 
 
 
 
-  await this.executor.persist(
+const node =
 
-    subscription
+await this.selector.select(
 
-  );
+request
 
-
-
-
-
-  await this.executor.execute(
-
-    node,
-
-    subscription
-
-  );
+);
 
 
 
 
 
-  await this.usageLogger.log({
+const subscription =
 
-    subscriptionId:
-    context.subscriptionId,
+await this.executor.createSubscription(
 
+node,
 
-    request
+body
 
-  });
-
-
+);
 
 
 
 
-  return {
 
-    success:true,
+await this.executor.persist(
 
-    data:subscription
+subscription
 
-  };
+);
 
+
+
+
+
+await this.executor.execute(
+
+node,
+
+subscription
+
+);
+
+
+
+
+
+await this.usageLogger.log({
+
+subscriptionId:
+
+context.subscriptionId,
+
+
+request
+
+});
+
+
+
+
+
+return {
+
+success:true,
+
+data:subscription
+
+};
 
 }
 
@@ -682,61 +676,61 @@ if(
 
 
 
-// =====================
-// SUB
-// =====================
-
 
 if(
-  url.pathname === "/sub"
+url.pathname === "/sub"
 ){
 
 
 
-  const node =
-  await this.selector.select(
+const node =
 
-    request
+await this.selector.select(
 
-  );
+request
 
-
-
-  const result =
-  await this.builder.build(
-
-    node,
-
-    request
-
-  );
+);
 
 
 
 
 
-  await this.usageLogger.log({
+const result =
 
-    subscriptionId:
-    context.subscriptionId,
+await this.builder.build(
 
+node,
 
-    request
+request
 
-  });
-
-
+);
 
 
 
-  return {
 
-    success:true,
 
-    data:result
+await this.usageLogger.log({
 
-  };
+subscriptionId:
 
+context.subscriptionId,
+
+
+request
+
+});
+
+
+
+
+
+return {
+
+success:true,
+
+data:result
+
+};
 
 }
 
@@ -747,64 +741,54 @@ if(
 
 
 
-// =====================
-// GET SUBSCRIPTION
-// =====================
-
 
 if(
-  url.pathname === "/subscription"
-  &&
-  method === "GET"
+url.pathname === "/subscription"
+&&
+method === "GET"
 ){
 
 
 
-  const id =
-  context.subscriptionId;
+const subscription =
 
+await this.executor.getSubscription(
 
+context.subscriptionId
 
-
-  const subscription =
-  await this.executor.getSubscription(
-
-    id
-
-  );
+);
 
 
 
 
 
-  if(!subscription){
+if(!subscription){
 
 
-    throw new WorkerError({
+throw new WorkerError({
 
-      code:
-      ErrorCode.NOT_FOUND,
+code:
 
-
-      message:
-      "Subscription not found"
-
-    });
+ErrorCode.NOT_FOUND,
 
 
-  }
+message:
+
+"Subscription not found"
+
+});
+
+}
 
 
 
+return {
 
-  return {
+success:true,
 
-    success:true,
+data:subscription
 
-    data:subscription
-
-  };
-
+};
 
 }
 
@@ -815,33 +799,34 @@ if(
 
 
 
-// =====================
-// LIST SUBSCRIPTIONS
-// =====================
-
 
 if(
-  url.pathname === "/subscriptions"
-  &&
-  method === "GET"
+url.pathname === "/subscriptions"
+&&
+method === "GET"
 ){
 
 
 
-  const subscriptions =
-  await this.executor.listSubscriptions();
+const subscriptions =
+
+await this.executor.listSubscriptions(
+
+context.subscriptionId
+
+);
 
 
 
 
-  return {
 
-    success:true,
+return {
 
-    data:subscriptions
+success:true,
 
-  };
+data:subscriptions
 
+};
 
 }
 
@@ -852,40 +837,37 @@ if(
 
 
 
-// =====================
-// CANCEL SUBSCRIPTION
-// =====================
-
 
 if(
-  url.pathname === "/subscription/cancel"
-  &&
-  method === "POST"
+url.pathname === "/subscription/cancel"
+&&
+method === "POST"
 ){
 
 
 
-  await this.executor.updateSubscriptionStatus(
+await this.executor.updateSubscriptionStatus(
 
-    context.subscriptionId,
+context.subscriptionId,
 
-    SubscriptionStatus.CANCELED
+SubscriptionStatus.CANCELED
 
-  );
+);
 
 
 
-  return {
+return {
 
-    success:true,
+success:true,
 
-    status:
-    SubscriptionStatus.CANCELED
+status:
 
-  };
+SubscriptionStatus.CANCELED
 
+};
 
 }
+
 
 
 
@@ -896,27 +878,30 @@ if(
 
 throw new WorkerError({
 
-  code:
-  ErrorCode.NOT_FOUND,
+code:
+
+ErrorCode.NOT_FOUND,
 
 
-  message:
-  "Route not found",
+message:
+
+"Route not found",
 
 
-  metadata:{
+metadata:{
 
-    path:
-    url.pathname,
+path:
+
+url.pathname,
 
 
-    stage:
-    "SubscriptionPipeline"
+stage:
 
-  }
+"SubscriptionPipeline"
+
+}
 
 });
-
 
 
 }
