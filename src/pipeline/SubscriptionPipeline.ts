@@ -46,8 +46,17 @@ import { D1BillingRepository }
 from "../infrastructure/d1/D1BillingRepository";
 
 
+import { D1PlanRepository }
+from "../infrastructure/d1/D1PlanRepository";
+
+
+import { PlanService }
+from "../core/plans/PlanService";
+
+
 import { SubscriptionContext }
 from "../core/context/SubscriptionContext";
+
 
 
 
@@ -73,7 +82,6 @@ new SubscriptionBuilder();
 
 
 
-
 private auth:AuthGuard;
 
 private apiKeyService:ApiKeyService;
@@ -87,6 +95,8 @@ private executor:ExecutorRegistry;
 private billingEngine:BillingEngine;
 
 private paymentService:PaymentService;
+
+private planService:PlanService;
 
 
 
@@ -117,6 +127,20 @@ new D1UsageRepository(db);
 
 const billingRepo =
 new D1BillingRepository(db);
+
+
+
+const planRepo =
+new D1PlanRepository(db);
+
+
+
+
+
+this.planService =
+new PlanService(
+planRepo
+);
 
 
 
@@ -169,11 +193,8 @@ subscriptionRepo
 
 this.billingEngine =
 new BillingEngine(
-
 usageRepo,
-
 billingRepo
-
 );
 
 
@@ -182,11 +203,9 @@ billingRepo
 
 this.paymentService =
 new PaymentService(
-
 new StripeClient(
 "STRIPE_SECRET_KEY"
 )
-
 );
 
 
@@ -221,6 +240,7 @@ request.method;
 
 
 
+
 if(
 url.pathname === "/auth/create-key"
 &&
@@ -236,15 +256,12 @@ subscriptionId:string;
 
 
 
-
 if(!body.subscriptionId){
-
 
 throw new WorkerError({
 
 code:
 ErrorCode.BAD_REQUEST,
-
 
 message:
 "subscriptionId required"
@@ -272,8 +289,8 @@ data:key
 
 };
 
-}
 
+}
 
 
 
@@ -317,12 +334,10 @@ signature
 
 if(!valid){
 
-
 throw new WorkerError({
 
 code:
 ErrorCode.UNAUTHORIZED,
-
 
 message:
 "Invalid webhook"
@@ -339,8 +354,7 @@ JSON.parse(payload);
 
 
 if(
-event.type ===
-"checkout.session.completed"
+event.type === "checkout.session.completed"
 ){
 
 
@@ -370,9 +384,8 @@ success:true
 
 };
 
+
 }
-
-
 
 
 
@@ -388,6 +401,7 @@ await this.auth.authenticate(
 request
 
 );
+
 
 
 
@@ -423,7 +437,6 @@ plan:string;
 
 
 const session =
-
 await this.paymentService.createCheckout(
 
 context.subscriptionId,
@@ -442,6 +455,7 @@ data:session
 
 };
 
+
 }
 
 
@@ -459,7 +473,6 @@ url.pathname === "/billing/invoice"
 
 
 const invoice =
-
 await this.billingEngine.generateInvoice(
 
 context.subscriptionId
@@ -475,6 +488,7 @@ success:true,
 data:invoice
 
 };
+
 
 }
 
@@ -495,7 +509,6 @@ method === "GET"
 
 
 const keys =
-
 await this.apiKeyService.list(
 
 context.subscriptionId
@@ -511,6 +524,7 @@ success:true,
 data:keys
 
 };
+
 
 }
 
@@ -531,11 +545,8 @@ method === "POST"
 
 
 const body =
-
 await request.json() as {
-
 key:string;
-
 };
 
 
@@ -554,6 +565,7 @@ success:true
 
 };
 
+
 }
 
 
@@ -564,11 +576,24 @@ success:true
 
 
 
+const plan =
+
+await this.planService.getSubscriptionPlan(
+
+context.subscriptionId
+
+);
+
+
+
+
+
+
 await this.quota.check(
 
 context.subscriptionId,
 
-"FREE"
+plan
 
 );
 
@@ -589,7 +614,6 @@ method === "POST"
 
 
 const body =
-
 await request.json();
 
 
@@ -597,7 +621,6 @@ await request.json();
 
 
 const node =
-
 await this.selector.select(
 
 request
@@ -647,9 +670,7 @@ subscription
 await this.usageLogger.log({
 
 subscriptionId:
-
 context.subscriptionId,
-
 
 request
 
@@ -666,6 +687,7 @@ success:true,
 data:subscription
 
 };
+
 
 }
 
@@ -712,9 +734,7 @@ request
 await this.usageLogger.log({
 
 subscriptionId:
-
 context.subscriptionId,
-
 
 request
 
@@ -731,6 +751,7 @@ success:true,
 data:result
 
 };
+
 
 }
 
@@ -768,17 +789,17 @@ if(!subscription){
 throw new WorkerError({
 
 code:
-
 ErrorCode.NOT_FOUND,
 
-
 message:
-
 "Subscription not found"
 
 });
 
+
 }
+
+
 
 
 
@@ -789,6 +810,7 @@ success:true,
 data:subscription
 
 };
+
 
 }
 
@@ -828,6 +850,7 @@ data:subscriptions
 
 };
 
+
 }
 
 
@@ -856,15 +879,17 @@ SubscriptionStatus.CANCELED
 
 
 
+
+
 return {
 
 success:true,
 
 status:
-
 SubscriptionStatus.CANCELED
 
 };
+
 
 }
 
@@ -879,24 +904,17 @@ SubscriptionStatus.CANCELED
 throw new WorkerError({
 
 code:
-
 ErrorCode.NOT_FOUND,
 
-
 message:
-
 "Route not found",
-
 
 metadata:{
 
 path:
-
 url.pathname,
 
-
 stage:
-
 "SubscriptionPipeline"
 
 }
