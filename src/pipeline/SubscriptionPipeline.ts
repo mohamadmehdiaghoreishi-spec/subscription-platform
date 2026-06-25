@@ -1,94 +1,663 @@
 import { WorkerError, ErrorCode } from "../core/errors/WorkerError";
 
+import { PolicyResolver } from "../core/policy/PolicyResolver";
+import { NodeSelector } from "../core/routing/NodeSelector";
+import { SubscriptionBuilder } from "../core/builders/SubscriptionBuilder";
+
+import { AuthGuard } from "../core/auth/AuthGuard";
+import { ApiKeyService } from "../core/auth/ApiKeyService";
+
+import { QuotaGuard } from "../core/guard/QuotaGuard";
+import { UsageLogger } from "../core/usage/UsageLogger";
+
+import { ExecutorRegistry } from "../core/executor/ExecutorRegistry";
+
+import { BillingEngine } from "../core/billing/BillingEngine";
+
+import { PaymentService } from "../core/payments/PaymentService";
+import { StripeClient } from "../core/payments/StripeClient";
+
+import { SubscriptionStatus } from "../domain/entities/SubscriptionStatus";
+
+import { D1SubscriptionRepository } from "../infrastructure/d1/D1SubscriptionRepository";
+import { D1ApiKeyRepository } from "../infrastructure/d1/D1ApiKeyRepository";
+import { D1UsageRepository } from "../infrastructure/d1/D1UsageRepository";
+import { D1BillingRepository } from "../infrastructure/d1/D1BillingRepository";
+
+import { SubscriptionContext } from "../core/context/SubscriptionContext";
+
+
 
 export class SubscriptionPipeline {
 
 
+  private policy =
+    new PolicyResolver();
+
+
+
+  private selector =
+    new NodeSelector();
+
+
+
+  private builder =
+    new SubscriptionBuilder();
+
+
+
+
+  private auth: AuthGuard;
+
+  private apiKeyService: ApiKeyService;
+
+  private quota: QuotaGuard;
+
+  private usageLogger: UsageLogger;
+
+  private executor: ExecutorRegistry;
+
+  private billingEngine: BillingEngine;
+
+  private paymentService: PaymentService;
+
+
+
+
   constructor(
-    private db?: D1Database
-  ) {}
+    db:D1Database
+  ){
 
 
 
-  async execute(request: Request): Promise<Response> {
-
-
-    const url = new URL(request.url);
+    const subscriptionRepo =
+      new D1SubscriptionRepository(db);
 
 
 
-    if (url.pathname === "/sub") {
+    const apiKeyRepo =
+      new D1ApiKeyRepository(db);
 
 
-      return new Response(
 
-        JSON.stringify({
+    const usageRepo =
+      new D1UsageRepository(db);
 
-          status: "ok",
 
-          endpoint: "/sub",
 
-          timestamp: Date.now()
+    const billingRepo =
+      new D1BillingRepository(db);
 
-        }),
 
-        {
-          status: 200,
 
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
+
+    this.auth =
+      new AuthGuard(
+        apiKeyRepo
+      );
+
+
+
+    this.apiKeyService =
+      new ApiKeyService(
+        apiKeyRepo
+      );
+
+
+
+    this.quota =
+      new QuotaGuard(
+        usageRepo
+      );
+
+
+
+    this.usageLogger =
+      new UsageLogger(
+        usageRepo
+      );
+
+
+
+    this.executor =
+      new ExecutorRegistry(
+        subscriptionRepo
+      );
+
+
+
+    this.billingEngine =
+      new BillingEngine(
+
+        usageRepo,
+
+        billingRepo
 
       );
+
+
+
+    this.paymentService =
+      new PaymentService(
+
+        new StripeClient(
+          "STRIPE_SECRET_KEY"
+        )
+
+      );
+
+
+  }
+
+
+
+
+
+
+
+  async execute(
+    request:Request
+  ):Promise<unknown>{
+
+
+
+    const url =
+      new URL(
+        request.url
+      );
+
+
+
+    const method =
+      request.method;
+
+
+
+
+
+
+
+    // =====================
+    // CREATE API KEY
+    // =====================
+
+
+    if(
+      url.pathname === "/auth/create-key"
+      &&
+      method === "POST"
+    ){
+
+
+      const body =
+        await request.json() as {
+          subscriptionId:string;
+        };
+
+
+
+      if(!body.subscriptionId){
+
+
+        throw new WorkerError({
+
+          code:
+            ErrorCode.BAD_REQUEST,
+
+
+          message:
+            "subscriptionId required"
+
+        });
+
+      }
+
+
+
+
+
+      const key =
+        await this.apiKeyService.create(
+
+          body.subscriptionId
+
+        );
+
+
+
+
+      return {
+
+        success:true,
+
+        data:key
+
+      };
+
+    }
+
+
+
+
+
+
+
+    // =====================
+    // STRIPE WEBHOOK
+    // =====================
+
+
+    if(
+      url.pathname === "/webhook/stripe"
+      &&
+      method === "POST"
+    ){
+
+
+      const payload =
+        await request.text();
+
+
+
+      const signature =
+        request.headers.get(
+          "stripe-signature"
+        ) || "";
+
+
+
+      const valid =
+        await this.paymentService.verifyWebhook(
+
+          payload,
+
+          signature
+
+        );
+
+
+
+      if(!valid){
+
+
+        throw new WorkerError({
+
+          code:
+            ErrorCode.UNAUTHORIZED,
+
+
+          message:
+            "Invalid webhook"
+
+        });
+
+
+      }
+
+
+
+
+      const event =
+        JSON.parse(payload);
+
+
+
+
+      if(
+        event.type ===
+        "checkout.session.completed"
+      ){
+
+
+        const subscriptionId =
+          event.data.object
+          .metadata
+          .subscriptionId;
+
+
+
+        await this.executor.updateSubscriptionStatus(
+
+          subscriptionId,
+
+          SubscriptionStatus.ACTIVE
+
+        );
+
+
+      }
+
+
+
+
+      return {
+
+        success:true
+
+      };
 
 
     }
 
 
 
-    if (url.pathname === "/") {
 
 
-      return new Response(
 
-        JSON.stringify({
 
-          status: "ok",
+    // =====================
+    // AUTH
+    // =====================
 
-          message: "Subscription Platform Root",
 
-          timestamp: Date.now()
+    const context:SubscriptionContext =
+      await this.auth.authenticate(
+        request
+      );
 
-        }),
 
-        {
-          status:200,
 
-          headers:{
-            "Content-Type":"application/json"
-          }
-        }
+
+
+
+
+    // =====================
+    // POLICY
+    // =====================
+
+
+    await this.policy.check(
+      request
+    );
+
+
+
+
+
+
+
+
+    // =====================
+    // BILLING CHECKOUT
+    // =====================
+
+
+    if(
+      url.pathname === "/billing/checkout"
+      &&
+      method === "POST"
+    ){
+
+
+
+      const body =
+        await request.json() as {
+          plan:string;
+        };
+
+
+
+
+      const session =
+        await this.paymentService.createCheckout(
+
+          context.subscriptionId,
+
+          body.plan
+
+        );
+
+
+
+
+      return {
+
+        success:true,
+
+        data:session
+
+      };
+
+
+    }
+
+
+
+
+
+
+
+    // =====================
+    // BILLING INVOICE
+    // =====================
+
+
+    if(
+      url.pathname === "/billing/invoice"
+    ){
+
+
+
+      const invoice =
+        await this.billingEngine.generateInvoice(
+
+          context.subscriptionId
+
+        );
+
+
+
+
+      return {
+
+        success:true,
+
+        data:invoice
+
+      };
+
+
+    }
+
+
+
+
+
+
+
+    // =====================
+    // QUOTA
+    // =====================
+
+
+    await this.quota.check(
+
+      context.subscriptionId,
+
+      "FREE"
+
+    );
+
+
+
+
+
+
+
+
+    // =====================
+    // SUBSCRIBE
+    // =====================
+
+
+    if(
+      url.pathname === "/subscribe"
+      &&
+      method === "POST"
+    ){
+
+
+
+      const body =
+        await request.json();
+
+
+
+
+      const node =
+        await this.selector.select(
+          request
+        );
+
+
+
+
+      const subscription =
+        await this.executor.createSubscription(
+
+          node,
+
+          body
+
+        );
+
+
+
+
+      await this.executor.persist(
+
+        subscription
 
       );
 
+
+
+
+      await this.executor.execute(
+
+        node,
+
+        subscription
+
+      );
+
+
+
+
+      await this.usageLogger.log({
+
+        subscriptionId:
+          context.subscriptionId,
+
+
+        request
+
+      });
+
+
+
+
+      return {
+
+        success:true,
+
+        data:subscription
+
+      };
+
+
     }
+
+
+
+
+
+
+
+    // =====================
+    // SUB
+    // =====================
+
+
+    if(
+      url.pathname === "/sub"
+    ){
+
+
+
+      const node =
+        await this.selector.select(
+          request
+        );
+
+
+
+
+      const result =
+        await this.builder.build(
+
+          node,
+
+          request
+
+        );
+
+
+
+
+      await this.usageLogger.log({
+
+        subscriptionId:
+          context.subscriptionId,
+
+
+        request
+
+      });
+
+
+
+
+      return {
+
+        success:true,
+
+        data:result
+
+      };
+
+
+    }
+
+
+
+
 
 
 
     throw new WorkerError({
 
-      code: ErrorCode.NOT_FOUND,
+      code:
+        ErrorCode.NOT_FOUND,
 
-      message: "Route not found",
 
-      details: {
+      message:
+        "Route not found",
 
-        path: url.pathname
+
+      metadata:{
+
+        path:
+          url.pathname,
+
+
+        stage:
+          "SubscriptionPipeline"
 
       }
 
     });
+
 
 
   }

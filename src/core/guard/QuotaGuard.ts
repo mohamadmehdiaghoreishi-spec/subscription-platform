@@ -1,62 +1,31 @@
-import {
-  WorkerError,
-  ErrorCode
-} from "../errors/WorkerError";
-
-
+import { WorkerError, ErrorCode } from "../errors/WorkerError";
+import { D1UsageRepository } from "../../infrastructure/d1/D1UsageRepository";
+import { PlanLimits } from "../plans/PlanTypes";
 
 export class QuotaGuard {
 
+  constructor(
+    private usageRepo: D1UsageRepository
+  ) {}
 
+  async check(subscriptionId: string, plan: keyof typeof PlanLimits) {
 
-  async check(
-    request:Request
-  ):Promise<void>{
+    const usage =
+      await this.usageRepo.countToday(subscriptionId);
 
+    const limit =
+      PlanLimits[plan].requestsPerDay;
 
-
-    const quotaExceeded =
-    false;
-
-
-
-    if(quotaExceeded){
-
-
-
+    if (usage >= limit) {
       throw new WorkerError({
-
-
-        code:
-        ErrorCode.RATE_LIMITED,
-
-
-        message:
-        "Quota exceeded for this subscription",
-
-
-
-        metadata:{
-
-
-          limit:100,
-
-
-          source:
-          "QuotaGuard"
-
-
+        code: ErrorCode.RATE_LIMITED,
+        message: "Quota exceeded",
+        metadata: {
+          usage,
+          limit,
+          plan
         }
-
-
       });
-
-
-
     }
-
-
   }
-
-
 }

@@ -1,36 +1,19 @@
-export enum ErrorCode {
-  BAD_REQUEST = "BAD_REQUEST",
-  VALIDATION = "VALIDATION",
-  NOT_FOUND = "NOT_FOUND",
-  UNAUTHORIZED = "UNAUTHORIZED",
-  FORBIDDEN = "FORBIDDEN",
-  RATE_LIMITED = "RATE_LIMITED",
-  INTERNAL_ERROR = "INTERNAL_ERROR",
-  UNKNOWN_ERROR = "UNKNOWN_ERROR",
-}
+import { ErrorCode } from "./ErrorCode";
 
+export { ErrorCode } from "./ErrorCode";
 
 
 export interface WorkerErrorPayload {
-
   code: ErrorCode;
-
   message: string;
-
   status?: number;
-
   details?: unknown;
-
   metadata?: Record<string, unknown>;
-
   timestamp?: string;
-
 }
 
 
-
 export class WorkerError extends Error {
-
 
   public readonly code: ErrorCode;
 
@@ -43,137 +26,52 @@ export class WorkerError extends Error {
   public readonly timestamp: string;
 
 
-
   constructor(
     payload: WorkerErrorPayload
   ) {
 
-
     super(payload.message);
-
 
     this.name = "WorkerError";
 
-
     this.code = payload.code;
 
-
     this.status =
-      payload.status ??
-      WorkerError.mapStatus(payload.code);
-
+      payload.status ?? 500;
 
     this.details =
       payload.details;
 
-
     this.metadata =
       payload.metadata;
-
 
     this.timestamp =
       payload.timestamp ??
       new Date().toISOString();
-
   }
 
 
-
-
-  private static mapStatus(
-    code: ErrorCode
-  ): number {
-
-
-    switch(code){
-
-
-      case ErrorCode.BAD_REQUEST:
-
-      case ErrorCode.VALIDATION:
-
-        return 400;
-
-
-
-      case ErrorCode.UNAUTHORIZED:
-
-        return 401;
-
-
-
-      case ErrorCode.FORBIDDEN:
-
-        return 403;
-
-
-
-      case ErrorCode.NOT_FOUND:
-
-        return 404;
-
-
-
-      case ErrorCode.RATE_LIMITED:
-
-        return 429;
-
-
-
-      case ErrorCode.INTERNAL_ERROR:
-
-      case ErrorCode.UNKNOWN_ERROR:
-
-      default:
-
-        return 500;
-
-
-    }
-
-  }
-
-
-
-
-  toJSON(){
-
+  toJSON() {
 
     return {
-
-
-      name:this.name,
-
-      code:this.code,
-
-      status:this.status,
-
-      message:this.message,
-
-      details:this.details,
-
-      metadata:this.metadata,
-
-      timestamp:this.timestamp
-
-
+      name: this.name,
+      code: this.code,
+      status: this.status,
+      message: this.message,
+      details: this.details,
+      metadata: this.metadata,
+      timestamp: this.timestamp,
     };
-
 
   }
 
-
 }
-
-
 
 
 export function isWorkerError(
   error: unknown
 ): error is WorkerError {
 
-
   return error instanceof WorkerError;
-
 
 }

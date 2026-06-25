@@ -1,8 +1,18 @@
 name = "subscription-platform"
 main = "src/index.ts"
-compatibility_date = "2026-01-01"
+compatibility_date = "2024-01-01"
 
 [[d1_databases]]
-binding = "DB"
-database_name = "subscription-db"
-database_id = "REPLACE_ME"
+binding      = "DB"
+database_name = "subscription-platform-db"
+database_id  = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# To create a D1 database and get the ID, run:
+#   npx wrangler d1 create subscription-platform-db
+# Then copy the database_id from the output into this file.
+#
+# To apply the migration locally:
+#   npx wrangler d1 execute subscription-platform-db --local --file=migrations/0001_init.sql
+#
+# To apply in production:
+#   npx wrangler d1 execute subscription-platform-db --file=migrations/0001_init.sql

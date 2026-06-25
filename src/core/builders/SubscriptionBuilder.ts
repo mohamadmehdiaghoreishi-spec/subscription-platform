@@ -1,26 +1,80 @@
-import { WorkerError } from "../errors/WorkerError";
-import { ErrorCode } from "../errors/ErrorCode";
+import {
+  WorkerError,
+  ErrorCode
+} from "../errors/WorkerError";
+
+import { SelectedNode } from "../routing/NodeSelector";
+
+
+export interface SubscriptionResult {
+
+  node:string;
+
+  status:
+  "success" | "failed";
+
+  payload:unknown;
+
+}
+
 
 
 export class SubscriptionBuilder {
 
 
-  build() {
+  async build(
+    node: SelectedNode,
+    request: Request
+  ): Promise<SubscriptionResult> {
 
 
-    throw new WorkerError({
+    if(!node){
 
-      code: ErrorCode.INTERNAL_ERROR,
+      throw new WorkerError({
 
-      message: "Subscription build failed",
+        code: ErrorCode.INTERNAL_ERROR,
 
-      metadata: {
+        message:
+          "Node is missing in SubscriptionBuilder",
 
-        stage: "builder"
+        metadata:{
+
+          stage:
+            "SubscriptionBuilder"
+
+        }
+
+      });
+
+    }
+
+
+
+    const url =
+      new URL(request.url);
+
+
+
+    return {
+
+      node: node.type,
+
+      status:"success",
+
+      payload:{
+
+        message:
+          "Subscription generated successfully 🚀",
+
+        path:
+          url.pathname,
+
+        reason:
+          node.reason
 
       }
 
-    });
+    };
 
 
   }

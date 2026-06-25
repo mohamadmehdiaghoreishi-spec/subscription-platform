@@ -1,7 +1,11 @@
-export type ErrorCode =
-  | "INTERNAL_ERROR"
-  | "VALIDATION_ERROR"
-  | "NOT_FOUND"
-  | "UNAUTHORIZED"
-  | "QUOTA_EXCEEDED"
-  | "POLICY_ERROR";
+export {
+
+  ErrorCode,
+
+  WorkerError,
+
+  WorkerErrorPayload,
+
+  isWorkerError
+
+} from "../core/errors/WorkerError";
