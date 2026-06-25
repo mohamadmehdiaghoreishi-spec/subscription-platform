@@ -60,26 +60,37 @@ export class SubscriptionPipeline {
   private paymentService:PaymentService;
 
 
+  private subscriptionRepo:D1SubscriptionRepository;
+
+
+
+
 
   constructor(
     db:D1Database
   ){
 
 
-    const subscriptionRepo =
+
+    this.subscriptionRepo =
       new D1SubscriptionRepository(db);
+
 
 
     const apiKeyRepo =
       new D1ApiKeyRepository(db);
 
 
+
     const usageRepo =
       new D1UsageRepository(db);
 
 
+
     const billingRepo =
       new D1BillingRepository(db);
+
+
 
 
 
@@ -89,10 +100,12 @@ export class SubscriptionPipeline {
       );
 
 
+
     this.apiKeyService =
       new ApiKeyService(
         apiKeyRepo
       );
+
 
 
     this.quota =
@@ -101,33 +114,45 @@ export class SubscriptionPipeline {
       );
 
 
+
     this.usageLogger =
       new UsageLogger(
         usageRepo
       );
 
 
+
     this.executor =
       new ExecutorRegistry(
-        subscriptionRepo
+        this.subscriptionRepo
       );
+
 
 
     this.billingEngine =
       new BillingEngine(
+
         usageRepo,
+
         billingRepo
+
       );
+
 
 
     this.paymentService =
       new PaymentService(
+
         new StripeClient(
           "STRIPE_SECRET_KEY"
         )
+
       );
 
+
   }
+
+
 
 
 
@@ -139,14 +164,17 @@ export class SubscriptionPipeline {
   ):Promise<unknown>{
 
 
+
     const url =
       new URL(
         request.url
       );
 
 
+
     const method =
       request.method;
+
 
 
 
@@ -183,10 +211,14 @@ export class SubscriptionPipeline {
 
 
 
+
       const key =
         await this.apiKeyService.create(
+
           body.subscriptionId
+
         );
+
 
 
       return {
@@ -197,7 +229,10 @@ export class SubscriptionPipeline {
 
       };
 
+
     }
+
+
 
 
 
@@ -216,6 +251,7 @@ export class SubscriptionPipeline {
         await request.text();
 
 
+
       const signature =
         request.headers.get(
           "stripe-signature"
@@ -225,9 +261,13 @@ export class SubscriptionPipeline {
 
       const valid =
         await this.paymentService.verifyWebhook(
+
           payload,
+
           signature
+
         );
+
 
 
       if(!valid){
@@ -246,8 +286,10 @@ export class SubscriptionPipeline {
 
 
 
+
       const event =
         JSON.parse(payload);
+
 
 
 
@@ -258,7 +300,9 @@ export class SubscriptionPipeline {
 
 
         const subscriptionId =
-          event.data.object.metadata.subscriptionId;
+          event.data.object
+          .metadata
+          .subscriptionId;
 
 
 
@@ -274,13 +318,17 @@ export class SubscriptionPipeline {
 
 
 
+
       return {
 
         success:true
 
       };
 
+
     }
+
+
 
 
 
@@ -300,8 +348,9 @@ export class SubscriptionPipeline {
 
 
 
+
     // =====================
-    // API KEY MANAGEMENT
+    // API KEYS
     // =====================
 
 
@@ -314,7 +363,9 @@ export class SubscriptionPipeline {
 
       const keys =
         await this.apiKeyService.list(
+
           context.subscriptionId
+
         );
 
 
@@ -326,7 +377,10 @@ export class SubscriptionPipeline {
 
       };
 
+
     }
+
+
 
 
 
@@ -362,9 +416,13 @@ export class SubscriptionPipeline {
 
 
 
+
       await this.apiKeyService.revoke(
+
         body.key
+
       );
+
 
 
       return {
@@ -372,6 +430,63 @@ export class SubscriptionPipeline {
         success:true
 
       };
+
+
+    }
+
+
+
+
+
+
+
+
+    // =====================
+    // SUBSCRIPTION INFO
+    // =====================
+
+
+    if(
+      url.pathname === "/subscription"
+      &&
+      method === "GET"
+    ){
+
+
+      const subscription =
+        await this.subscriptionRepo.findById(
+
+          context.subscriptionId
+
+        );
+
+
+
+      if(!subscription){
+
+        throw new WorkerError({
+
+          code:
+            ErrorCode.NOT_FOUND,
+
+          message:
+            "Subscription not found"
+
+        });
+
+      }
+
+
+
+
+      return {
+
+        success:true,
+
+        data:subscription
+
+      };
+
 
     }
 
@@ -399,10 +514,12 @@ export class SubscriptionPipeline {
     ){
 
 
+
       const body =
         await request.json() as {
           plan:string;
         };
+
 
 
 
@@ -425,7 +542,9 @@ export class SubscriptionPipeline {
 
       };
 
+
     }
+
 
 
 
@@ -438,12 +557,14 @@ export class SubscriptionPipeline {
     ){
 
 
+
       const invoice =
         await this.billingEngine.generateInvoice(
 
           context.subscriptionId
 
         );
+
 
 
       return {
@@ -453,6 +574,7 @@ export class SubscriptionPipeline {
         data:invoice
 
       };
+
 
     }
 
@@ -476,11 +598,13 @@ export class SubscriptionPipeline {
 
 
 
+
     if(
       url.pathname === "/subscribe"
       &&
       method === "POST"
     ){
+
 
 
       const body =
@@ -490,7 +614,9 @@ export class SubscriptionPipeline {
 
       const node =
         await this.selector.select(
+
           request
+
         );
 
 
@@ -507,7 +633,9 @@ export class SubscriptionPipeline {
 
 
       await this.executor.persist(
+
         subscription
+
       );
 
 
@@ -527,6 +655,7 @@ export class SubscriptionPipeline {
         subscriptionId:
           context.subscriptionId,
 
+
         request
 
       });
@@ -541,7 +670,10 @@ export class SubscriptionPipeline {
 
       };
 
+
     }
+
+
 
 
 
@@ -554,10 +686,14 @@ export class SubscriptionPipeline {
     ){
 
 
+
       const node =
         await this.selector.select(
+
           request
+
         );
+
 
 
       const result =
@@ -576,6 +712,7 @@ export class SubscriptionPipeline {
         subscriptionId:
           context.subscriptionId,
 
+
         request
 
       });
@@ -590,7 +727,9 @@ export class SubscriptionPipeline {
 
       };
 
+
     }
+
 
 
 
