@@ -10,6 +10,7 @@ export class ExecutorRegistry {
   ) {}
 
   async createSubscription(
+    subscriptionId: string,
     node: SelectedNode,
     payload: unknown
   ): Promise<SubscriptionEntity> {
@@ -17,6 +18,8 @@ export class ExecutorRegistry {
     return {
 
       id: crypto.randomUUID(),
+
+      subscriptionId,
 
       node: node.type,
 
@@ -34,9 +37,7 @@ export class ExecutorRegistry {
     subscription: SubscriptionEntity
   ): Promise<SubscriptionEntity> {
 
-    return this.repository.create(
-      subscription
-    );
+    return this.repository.create(subscription);
 
   }
 

@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS plans (
 
 );
 
-
 CREATE TABLE IF NOT EXISTS subscription_plans (
 
   id TEXT PRIMARY KEY,
@@ -21,32 +20,30 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
 
 );
 
-
-
-INSERT INTO plans
+INSERT OR IGNORE INTO plans
 (
- id,
- name,
- createdAt
+  id,
+  name,
+  createdAt
 )
 VALUES
 (
- 'free',
- 'FREE',
- datetime('now')
+  'free',
+  'FREE',
+  datetime('now')
 ),
 (
- 'basic',
- 'BASIC',
- datetime('now')
+  'basic',
+  'BASIC',
+  datetime('now')
 ),
 (
- 'pro',
- 'PRO',
- datetime('now')
+  'pro',
+  'PRO',
+  datetime('now')
 ),
 (
- 'enterprise',
- 'ENTERPRISE',
- datetime('now')
+  'enterprise',
+  'ENTERPRISE',
+  datetime('now')
 );

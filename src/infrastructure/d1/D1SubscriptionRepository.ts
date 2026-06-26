@@ -15,6 +15,7 @@ export class D1SubscriptionRepository {
 INSERT INTO subscriptions
 (
   id,
+  subscriptionId,
   node,
   status,
   payload,
@@ -26,12 +27,14 @@ VALUES
   ?,
   ?,
   ?,
+  ?,
   ?
 )
 `
     )
     .bind(
       data.id,
+      data.subscriptionId,
       data.node,
       data.status,
       JSON.stringify(data.payload),
@@ -40,6 +43,7 @@ VALUES
     .run();
 
     return data;
+
   }
 
   async findById(
@@ -63,11 +67,13 @@ WHERE id = ?
 
     return {
       id: result.id,
+      subscriptionId: result.subscriptionId,
       node: result.node,
       status: result.status,
       payload: JSON.parse(result.payload),
       createdAt: result.createdAt
     };
+
   }
 
   async findBySubscriptionId(
@@ -79,7 +85,7 @@ WHERE id = ?
 `
 SELECT *
 FROM subscriptions
-WHERE id = ?
+WHERE subscriptionId = ?
 ORDER BY createdAt DESC
 `
       )
@@ -88,11 +94,13 @@ ORDER BY createdAt DESC
 
     return (result.results ?? []).map((row: any) => ({
       id: row.id,
+      subscriptionId: row.subscriptionId,
       node: row.node,
       status: row.status,
       payload: JSON.parse(row.payload),
       createdAt: row.createdAt
     }));
+
   }
 
   async list(): Promise<SubscriptionEntity[]> {
@@ -109,11 +117,13 @@ ORDER BY createdAt DESC
 
     return (result.results ?? []).map((row: any) => ({
       id: row.id,
+      subscriptionId: row.subscriptionId,
       node: row.node,
       status: row.status,
       payload: JSON.parse(row.payload),
       createdAt: row.createdAt
     }));
+
   }
 
   async updateStatus(
@@ -133,6 +143,7 @@ WHERE id = ?
       id
     )
     .run();
+
   }
 
 }
