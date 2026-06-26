@@ -3,191 +3,90 @@ import { SubscriptionEntity } from "../../domain/repositories/SubscriptionReposi
 import { SubscriptionStatus } from "../../domain/entities/SubscriptionStatus";
 import { SelectedNode } from "../routing/NodeSelector";
 
-
 export class ExecutorRegistry {
 
-
   constructor(
-    private repository:D1SubscriptionRepository
-  ){}
-
-
-
-
+    private repository: D1SubscriptionRepository
+  ) {}
 
   async createSubscription(
-
-    node:SelectedNode,
-
-    payload:unknown
-
-  ):Promise<SubscriptionEntity>{
-
+    node: SelectedNode,
+    payload: unknown
+  ): Promise<SubscriptionEntity> {
 
     return {
 
-      id:
-        crypto.randomUUID(),
+      id: crypto.randomUUID(),
 
+      node: node.type,
 
-      node:
-        node.type,
-
-
-      status:
-        SubscriptionStatus.CREATED,
-
+      status: SubscriptionStatus.CREATED,
 
       payload,
 
-
-      createdAt:
-        new Date().toISOString()
+      createdAt: new Date().toISOString()
 
     };
 
   }
 
-
-
-
-
-
-
   async persist(
-
-    subscription:SubscriptionEntity
-
-  ){
-
+    subscription: SubscriptionEntity
+  ): Promise<SubscriptionEntity> {
 
     return this.repository.create(
-
       subscription
-
     );
 
   }
 
-
-
-
-
-
-
-
   async execute(
-
-    node:SelectedNode,
-
-    subscription:SubscriptionEntity
-
-  ){
-
-
+    node: SelectedNode,
+    subscription: SubscriptionEntity
+  ) {
 
     return {
 
-      executed:true,
+      executed: true,
 
+      node: node.type,
 
-      node:
-        node.type,
-
-
-      subscriptionId:
-        subscription.id
+      subscriptionId: subscription.id
 
     };
 
-
   }
-
-
-
-
-
-
-
-
-
 
   async updateSubscriptionStatus(
-
-    id:string,
-
-    status:SubscriptionStatus
-
-  ):Promise<void>{
-
+    id: string,
+    status: SubscriptionStatus
+  ): Promise<void> {
 
     await this.repository.updateStatus(
-
       id,
-
       status
-
     );
 
   }
-
-
-
-
-
-
-
-
 
   async listSubscriptions(
+    subscriptionId: string
+  ): Promise<SubscriptionEntity[]> {
 
-    subscriptionId:string
-
-  ):Promise<SubscriptionEntity[]>{
-
-
-    const subscriptions =
-
-      await this.repository.list();
-
-
-
-
-    return subscriptions.filter(
-
-      subscription =>
-
-        subscription.id === subscriptionId
-
+    return this.repository.findBySubscriptionId(
+      subscriptionId
     );
 
-
   }
-
-
-
-
-
-
-
-
 
   async getSubscription(
-
-    id:string
-
-  ):Promise<SubscriptionEntity | null>{
-
+    id: string
+  ): Promise<SubscriptionEntity | null> {
 
     return this.repository.findById(
-
       id
-
     );
 
-
   }
-
-
 
 }
