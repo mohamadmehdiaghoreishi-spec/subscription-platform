@@ -7,8 +7,10 @@ import {
 import { PolicyResolver }
 from "../core/policy/PolicyResolver";
 
+
 import { NodeSelector }
 from "../core/routing/NodeSelector";
+
 
 import { SubscriptionBuilder }
 from "../core/builders/SubscriptionBuilder";
@@ -17,12 +19,14 @@ from "../core/builders/SubscriptionBuilder";
 import { AuthGuard }
 from "../core/auth/AuthGuard";
 
+
 import { ApiKeyService }
 from "../core/auth/ApiKeyService";
 
 
 import { QuotaGuard }
 from "../core/guard/QuotaGuard";
+
 
 import { UsageLogger }
 from "../core/usage/UsageLogger";
@@ -38,6 +42,7 @@ from "../core/billing/BillingEngine";
 
 import { PaymentService }
 from "../core/payments/PaymentService";
+
 
 import { StripeClient }
 from "../core/payments/StripeClient";
@@ -71,8 +76,13 @@ import { PlanService }
 from "../core/plans/PlanService";
 
 
+import { PlanType }
+from "../core/plans/PlanTypes";
+
+
 import { SubscriptionContext }
 from "../core/context/SubscriptionContext";
+
 
 
 
@@ -126,6 +136,7 @@ private planService:PlanService;
 
 
 
+
 constructor(
 db:D1Database
 ){
@@ -158,14 +169,12 @@ new D1PlanRepository(db);
 
 
 
-
 this.auth =
 new AuthGuard(
 
 apiKeyRepo
 
 );
-
 
 
 
@@ -180,14 +189,12 @@ apiKeyRepo
 
 
 
-
 this.quota =
 new QuotaGuard(
 
 usageRepo
 
 );
-
 
 
 
@@ -202,14 +209,12 @@ usageRepo
 
 
 
-
 this.executor =
 new ExecutorRegistry(
 
 subscriptionRepo
 
 );
-
 
 
 
@@ -222,7 +227,6 @@ usageRepo,
 billingRepo
 
 );
-
 
 
 
@@ -241,7 +245,6 @@ new StripeClient(
 
 
 
-
 this.planService =
 new PlanService(
 
@@ -250,10 +253,17 @@ planRepo
 );
 
 
+}
 
-} id="n6k8t2"
+
+
+
+
+
 async execute(
+
 request:Request
+
 ):Promise<unknown>{
 
 
@@ -269,8 +279,6 @@ request.method;
 
 
 
-
-
 if(
 url.pathname === "/auth/create-key"
 &&
@@ -278,9 +286,12 @@ method === "POST"
 ){
 
 
+
 const body =
 await request.json() as {
+
 subscriptionId:string;
+
 };
 
 
@@ -288,16 +299,20 @@ subscriptionId:string;
 if(!body.subscriptionId){
 
 
+
 throw new WorkerError({
 
 code:
+
 ErrorCode.BAD_REQUEST,
 
 
 message:
+
 "subscriptionId required"
 
 });
+
 
 }
 
@@ -321,17 +336,7 @@ data:key
 };
 
 
-}
-
-
-
-
-
-
-
-
-
-if(
+}if(
 url.pathname === "/webhook/stripe"
 &&
 method === "POST"
@@ -366,16 +371,20 @@ signature
 if(!valid){
 
 
+
 throw new WorkerError({
 
 code:
+
 ErrorCode.UNAUTHORIZED,
 
 
 message:
+
 "Invalid webhook"
 
 });
+
 
 }
 
@@ -392,6 +401,7 @@ event.type ===
 ){
 
 
+
 const subscriptionId =
 event.data.object.metadata.subscriptionId;
 
@@ -406,6 +416,7 @@ SubscriptionStatus.ACTIVE
 );
 
 
+
 }
 
 
@@ -417,9 +428,8 @@ success:true
 };
 
 
+
 }
-
-
 
 
 
@@ -438,13 +448,11 @@ request
 
 
 
-
 await this.policy.check(
 
 request
 
 );
-
 
 
 
@@ -462,7 +470,9 @@ method === "POST"
 
 const body =
 await request.json() as {
+
 plan:string;
+
 };
 
 
@@ -488,7 +498,6 @@ data:session
 
 
 }
-
 
 
 
@@ -528,7 +537,6 @@ data:invoice
 
 
 
-
 if(
 url.pathname === "/auth/keys"
 &&
@@ -556,7 +564,6 @@ data:keys
 
 
 }
-
 
 
 
@@ -603,33 +610,6 @@ success:true
 
 
 
-// =====================
-// REAL PLAN QUOTA
-// =====================
-
-
-const subscriptionPlan =
-
-await this.planService.getSubscriptionPlan(
-
-context.subscriptionId
-
-);
-
-
-
-await this.quota.check(
-
-context.subscriptionId,
-
-subscriptionPlan
-
-);
-
-
-
-
-
 
 if(
 url.pathname === "/subscribe"
@@ -640,7 +620,35 @@ method === "POST"
 
 
 const body =
-await request.json();
+await request.json() as {
+
+plan?:PlanType;
+
+[key:string]:unknown;
+
+};
+
+
+
+
+const currentPlan =
+
+await this.planService.getSubscriptionPlan(
+
+context.subscriptionId
+
+);
+
+
+
+
+await this.quota.check(
+
+context.subscriptionId,
+
+currentPlan
+
+);
 
 
 
@@ -656,6 +664,7 @@ request
 
 
 const subscription =
+
 await this.executor.createSubscription(
 
 node,
@@ -678,6 +687,18 @@ subscription
 
 
 
+await this.planService.assignPlan(
+
+subscription.id,
+
+body.plan ?? PlanType.FREE
+
+);
+
+
+
+
+
 await this.executor.execute(
 
 node,
@@ -693,6 +714,7 @@ subscription
 await this.usageLogger.log({
 
 subscriptionId:
+
 context.subscriptionId,
 
 
@@ -713,7 +735,17 @@ data:subscription
 };
 
 
-} if(
+
+}
+
+
+
+
+
+
+
+
+if(
 url.pathname === "/sub"
 ){
 
@@ -725,6 +757,7 @@ await this.selector.select(
 request
 
 );
+
 
 
 
@@ -744,6 +777,7 @@ request
 await this.usageLogger.log({
 
 subscriptionId:
+
 context.subscriptionId,
 
 
@@ -765,14 +799,6 @@ data:result
 
 
 }
-
-
-
-
-
-
-
-
 if(
 url.pathname === "/subscription"
 &&
@@ -781,18 +807,11 @@ method === "GET"
 
 
 
-const subscriptionId =
-
-context.subscriptionId;
-
-
-
-
 const subscription =
 
 await this.executor.getSubscription(
 
-subscriptionId
+context.subscriptionId
 
 );
 
@@ -803,13 +822,16 @@ subscriptionId
 if(!subscription){
 
 
+
 throw new WorkerError({
 
 code:
+
 ErrorCode.NOT_FOUND,
 
 
 message:
+
 "Subscription not found"
 
 });
@@ -868,6 +890,7 @@ data:subscriptions
 };
 
 
+
 }
 
 
@@ -902,6 +925,7 @@ return {
 success:true,
 
 status:
+
 SubscriptionStatus.CANCELED
 
 };
@@ -916,14 +940,19 @@ SubscriptionStatus.CANCELED
 
 
 
+
 throw new WorkerError({
 
 
+
 code:
+
 ErrorCode.NOT_FOUND,
 
 
+
 message:
+
 "Route not found",
 
 
@@ -931,15 +960,21 @@ message:
 metadata:{
 
 
+
 path:
+
 url.pathname,
 
 
+
 stage:
+
 "SubscriptionPipeline"
 
 
+
 }
+
 
 
 });
