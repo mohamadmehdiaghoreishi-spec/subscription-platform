@@ -1,4 +1,5 @@
 import { ErrorCode } from "./ErrorCode";
+import { ErrorStatusMap } from "./ErrorStatusMap";
 
 export { ErrorCode } from "./ErrorCode";
 
@@ -37,7 +38,7 @@ export class WorkerError extends Error {
     this.code = payload.code;
 
     this.status =
-      payload.status ?? 500;
+      payload.status ?? ErrorStatusMap[payload.code] ?? 500;
 
     this.details =
       payload.details;

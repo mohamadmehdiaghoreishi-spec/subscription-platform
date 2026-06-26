@@ -7,16 +7,27 @@ export class UsageLogger {
   ) {}
 
   async log(input: {
-    subscriptionId: string;
+
+    ownerId: string;
+
     request: Request;
+
   }) {
 
     await this.repo.create({
+
       id: crypto.randomUUID(),
-      subscriptionId: input.subscriptionId,
+
+      ownerId: input.ownerId,
+
       timestamp: new Date().toISOString(),
+
       path: new URL(input.request.url).pathname,
+
       method: input.request.method
+
     });
+
   }
+
 }

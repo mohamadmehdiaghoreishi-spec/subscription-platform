@@ -714,9 +714,7 @@ subscription
 
 await this.usageLogger.log({
 
-subscriptionId:
-
-context.ownerId,
+ownerId: context.ownerId,
 
 
 request
@@ -777,9 +775,7 @@ request
 
 await this.usageLogger.log({
 
-subscriptionId:
-
-context.ownerId,
+ownerId: context.ownerId,
 
 
 request
@@ -987,3 +983,4 @@ stage:
 
 
 }
+

@@ -30,7 +30,7 @@ VALUES
     )
     .bind(
       data.id,
-      data.subscriptionId,
+      data.ownerId,
       data.path,
       data.timestamp
     )

@@ -1,7 +1,13 @@
 export interface UsageEntity {
+
   id: string;
-  subscriptionId: string;
+
+  ownerId: string;
+
   timestamp: string;
+
   path: string;
+
   method: string;
+
 }
