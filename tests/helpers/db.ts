@@ -9,7 +9,6 @@ WHERE type='table'
 ORDER BY name
 `).all();
 
-  console.log("TABLES:", tables.results);
 
   const list = [
     "usage",
@@ -19,7 +18,6 @@ ORDER BY name
   ];
 
   for (const table of list) {
-    console.log("Deleting", table);
     await env.DB.prepare(`DELETE FROM ${table}`).run();
   }
 

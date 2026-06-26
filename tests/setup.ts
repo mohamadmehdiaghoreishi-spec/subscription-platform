@@ -1,6 +1,15 @@
-import { env, applyD1Migrations } from "cloudflare:test";
-import { readD1Migrations } from "@cloudflare/vitest-pool-workers/config";
+import {
+  env,
+  applyD1Migrations,
+} from "cloudflare:test";
 
-const migrations = await readD1Migrations("./migrations");
+import { beforeAll } from "vitest";
 
-await applyD1Migrations(env.DB, migrations);
+beforeAll(async () => {
+
+  await applyD1Migrations(
+    env.DB,
+    env.TEST_MIGRATIONS
+  );
+
+});
