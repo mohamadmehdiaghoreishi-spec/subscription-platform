@@ -480,7 +480,7 @@ plan:string;
 const session =
 await this.paymentService.createCheckout(
 
-context.subscriptionId,
+context.ownerId,
 
 body.plan
 
@@ -514,7 +514,7 @@ url.pathname === "/billing/invoice"
 const invoice =
 await this.billingEngine.generateInvoice(
 
-context.subscriptionId
+context.ownerId
 
 );
 
@@ -548,7 +548,7 @@ method === "GET"
 const keys =
 await this.apiKeyService.list(
 
-context.subscriptionId
+context.ownerId
 
 );
 
@@ -635,7 +635,7 @@ const currentPlan =
 
 await this.planService.getSubscriptionPlan(
 
-context.subscriptionId
+context.ownerId
 
 );
 
@@ -644,7 +644,7 @@ context.subscriptionId
 
 await this.quota.check(
 
-context.subscriptionId,
+context.ownerId,
 
 currentPlan
 
@@ -666,7 +666,7 @@ request
 const subscription =
 await this.executor.createSubscription(
 
-context.subscriptionId,
+context.ownerId,
 
 node,
 
@@ -716,7 +716,7 @@ await this.usageLogger.log({
 
 subscriptionId:
 
-context.subscriptionId,
+context.ownerId,
 
 
 request
@@ -779,7 +779,7 @@ await this.usageLogger.log({
 
 subscriptionId:
 
-context.subscriptionId,
+context.ownerId,
 
 
 request
@@ -812,7 +812,7 @@ const subscription =
 
 await this.executor.getSubscription(
 
-context.subscriptionId
+context.ownerId
 
 );
 
@@ -874,7 +874,7 @@ const subscriptions =
 
 await this.executor.listSubscriptions(
 
-context.subscriptionId
+context.ownerId
 
 );
 
@@ -911,7 +911,7 @@ method === "POST"
 
 await this.executor.updateSubscriptionStatus(
 
-context.subscriptionId,
+context.ownerId,
 
 SubscriptionStatus.CANCELED
 

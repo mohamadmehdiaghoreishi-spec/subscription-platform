@@ -3,113 +3,78 @@ import {
   ErrorCode
 } from "../errors/WorkerError";
 
-
 import {
   D1UsageRepository
-}
-from "../../infrastructure/d1/D1UsageRepository";
-
+} from "../../infrastructure/d1/D1UsageRepository";
 
 import {
   PlanLimits,
   PlanType
-}
-from "../plans/PlanTypes";
-
-
-
-
+} from "../plans/PlanTypes";
 
 export class QuotaGuard {
 
+  constructor(
+    private usageRepo: D1UsageRepository
+  ) {}
 
+  async check(
+    subscriptionId: string,
+    plan: PlanType
+  ): Promise<void> {
 
-constructor(
+    const usage =
+      await this.usageRepo.countToday(
+        subscriptionId
+      );
 
-  private usageRepo:D1UsageRepository
+    const limits =
+      PlanLimits[plan];
 
-){}
+    if (!limits) {
 
+      throw new WorkerError({
 
+        code: ErrorCode.INTERNAL_ERROR,
 
+        message: "Unknown subscription plan",
 
+        metadata: {
+          subscriptionId,
+          plan
+        }
 
+      });
 
+    }
 
-async check(
+    const limit =
+      limits.requestsPerDay;
 
-  subscriptionId:string,
+    if (usage >= limit) {
 
-  plan:PlanType
+      throw new WorkerError({
 
-):Promise<void>{
+        code: ErrorCode.RATE_LIMITED,
 
+        message: "Quota exceeded",
 
+        metadata: {
 
-const usage =
+          subscriptionId,
 
-await this.usageRepo.countToday(
+          usage,
 
-  subscriptionId
+          limit,
 
-);
+          plan
 
+        }
 
+      });
 
-
-
-const limit =
-
-PlanLimits[plan].requestsPerDay;
-
-
-
-
-
-if(
-  usage >= limit
-){
-
-
-
-throw new WorkerError({
-
-  code:
-  ErrorCode.RATE_LIMITED,
-
-
-  message:
-  "Quota exceeded",
-
-
-
-  metadata:{
-
-
-    subscriptionId,
-
-
-    usage,
-
-
-    limit,
-
-
-    plan
-
+    }
 
   }
-
-
-});
-
-
-}
-
-
-
-}
-
-
 
 }
