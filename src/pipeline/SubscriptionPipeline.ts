@@ -4,30 +4,47 @@ import {
 } from "../core/errors/WorkerError";
 
 
-import { PolicyResolver } from "../core/policy/PolicyResolver";
-import { NodeSelector } from "../core/routing/NodeSelector";
-import { SubscriptionBuilder } from "../core/builders/SubscriptionBuilder";
+import { PolicyResolver }
+from "../core/policy/PolicyResolver";
+
+import { NodeSelector }
+from "../core/routing/NodeSelector";
+
+import { SubscriptionBuilder }
+from "../core/builders/SubscriptionBuilder";
 
 
-import { AuthGuard } from "../core/auth/AuthGuard";
-import { ApiKeyService } from "../core/auth/ApiKeyService";
+import { AuthGuard }
+from "../core/auth/AuthGuard";
+
+import { ApiKeyService }
+from "../core/auth/ApiKeyService";
 
 
-import { QuotaGuard } from "../core/guard/QuotaGuard";
-import { UsageLogger } from "../core/usage/UsageLogger";
+import { QuotaGuard }
+from "../core/guard/QuotaGuard";
+
+import { UsageLogger }
+from "../core/usage/UsageLogger";
 
 
-import { ExecutorRegistry } from "../core/executor/ExecutorRegistry";
+import { ExecutorRegistry }
+from "../core/executor/ExecutorRegistry";
 
 
-import { BillingEngine } from "../core/billing/BillingEngine";
+import { BillingEngine }
+from "../core/billing/BillingEngine";
 
 
-import { PaymentService } from "../core/payments/PaymentService";
-import { StripeClient } from "../core/payments/StripeClient";
+import { PaymentService }
+from "../core/payments/PaymentService";
+
+import { StripeClient }
+from "../core/payments/StripeClient";
 
 
-import { SubscriptionStatus } from "../domain/entities/SubscriptionStatus";
+import { SubscriptionStatus }
+from "../domain/entities/SubscriptionStatus";
 
 
 import { D1SubscriptionRepository }
@@ -61,7 +78,6 @@ from "../core/context/SubscriptionContext";
 
 
 
-
 export class SubscriptionPipeline {
 
 
@@ -84,20 +100,26 @@ new SubscriptionBuilder();
 
 private auth:AuthGuard;
 
+
 private apiKeyService:ApiKeyService;
+
 
 private quota:QuotaGuard;
 
+
 private usageLogger:UsageLogger;
+
 
 private executor:ExecutorRegistry;
 
+
 private billingEngine:BillingEngine;
+
 
 private paymentService:PaymentService;
 
-private planService:PlanService;
 
+private planService:PlanService;
 
 
 
@@ -137,18 +159,11 @@ new D1PlanRepository(db);
 
 
 
-this.planService =
-new PlanService(
-planRepo
-);
-
-
-
-
-
 this.auth =
 new AuthGuard(
+
 apiKeyRepo
+
 );
 
 
@@ -157,7 +172,9 @@ apiKeyRepo
 
 this.apiKeyService =
 new ApiKeyService(
+
 apiKeyRepo
+
 );
 
 
@@ -166,7 +183,9 @@ apiKeyRepo
 
 this.quota =
 new QuotaGuard(
+
 usageRepo
+
 );
 
 
@@ -175,7 +194,9 @@ usageRepo
 
 this.usageLogger =
 new UsageLogger(
+
 usageRepo
+
 );
 
 
@@ -184,7 +205,9 @@ usageRepo
 
 this.executor =
 new ExecutorRegistry(
+
 subscriptionRepo
+
 );
 
 
@@ -193,8 +216,11 @@ subscriptionRepo
 
 this.billingEngine =
 new BillingEngine(
+
 usageRepo,
+
 billingRepo
+
 );
 
 
@@ -203,23 +229,29 @@ billingRepo
 
 this.paymentService =
 new PaymentService(
+
 new StripeClient(
+
 "STRIPE_SECRET_KEY"
+
 )
+
 );
 
 
 
-}
+
+
+this.planService =
+new PlanService(
+
+planRepo
+
+);
 
 
 
-
-
-
-
-
-
+} id="n6k8t2"
 async execute(
 request:Request
 ):Promise<unknown>{
@@ -239,14 +271,11 @@ request.method;
 
 
 
-
-
 if(
 url.pathname === "/auth/create-key"
 &&
 method === "POST"
 ){
-
 
 
 const body =
@@ -258,10 +287,12 @@ subscriptionId:string;
 
 if(!body.subscriptionId){
 
+
 throw new WorkerError({
 
 code:
 ErrorCode.BAD_REQUEST,
+
 
 message:
 "subscriptionId required"
@@ -334,10 +365,12 @@ signature
 
 if(!valid){
 
+
 throw new WorkerError({
 
 code:
 ErrorCode.UNAUTHORIZED,
+
 
 message:
 "Invalid webhook"
@@ -354,9 +387,9 @@ JSON.parse(payload);
 
 
 if(
-event.type === "checkout.session.completed"
+event.type ===
+"checkout.session.completed"
 ){
-
 
 
 const subscriptionId =
@@ -371,7 +404,6 @@ subscriptionId,
 SubscriptionStatus.ACTIVE
 
 );
-
 
 
 }
@@ -412,7 +444,6 @@ await this.policy.check(
 request
 
 );
-
 
 
 
@@ -465,7 +496,6 @@ data:session
 
 
 
-
 if(
 url.pathname === "/billing/invoice"
 ){
@@ -491,7 +521,6 @@ data:invoice
 
 
 }
-
 
 
 
@@ -535,7 +564,6 @@ data:keys
 
 
 
-
 if(
 url.pathname === "/auth/revoke-key"
 &&
@@ -546,7 +574,9 @@ method === "POST"
 
 const body =
 await request.json() as {
+
 key:string;
+
 };
 
 
@@ -573,10 +603,12 @@ success:true
 
 
 
+// =====================
+// REAL PLAN QUOTA
+// =====================
 
 
-
-const plan =
+const subscriptionPlan =
 
 await this.planService.getSubscriptionPlan(
 
@@ -586,19 +618,13 @@ context.subscriptionId
 
 
 
-
-
-
 await this.quota.check(
 
 context.subscriptionId,
 
-plan
+subscriptionPlan
 
 );
-
-
-
 
 
 
@@ -619,7 +645,6 @@ await request.json();
 
 
 
-
 const node =
 await this.selector.select(
 
@@ -630,9 +655,7 @@ request
 
 
 
-
 const subscription =
-
 await this.executor.createSubscription(
 
 node,
@@ -672,6 +695,7 @@ await this.usageLogger.log({
 subscriptionId:
 context.subscriptionId,
 
+
 request
 
 });
@@ -689,24 +713,13 @@ data:subscription
 };
 
 
-}
-
-
-
-
-
-
-
-
-
-if(
+} if(
 url.pathname === "/sub"
 ){
 
 
 
 const node =
-
 await this.selector.select(
 
 request
@@ -715,10 +728,7 @@ request
 
 
 
-
-
 const result =
-
 await this.builder.build(
 
 node,
@@ -735,6 +745,7 @@ await this.usageLogger.log({
 
 subscriptionId:
 context.subscriptionId,
+
 
 request
 
@@ -762,7 +773,6 @@ data:result
 
 
 
-
 if(
 url.pathname === "/subscription"
 &&
@@ -771,11 +781,18 @@ method === "GET"
 
 
 
+const subscriptionId =
+
+context.subscriptionId;
+
+
+
+
 const subscription =
 
 await this.executor.getSubscription(
 
-context.subscriptionId
+subscriptionId
 
 );
 
@@ -790,6 +807,7 @@ throw new WorkerError({
 
 code:
 ErrorCode.NOT_FOUND,
+
 
 message:
 "Subscription not found"
@@ -813,7 +831,6 @@ data:subscription
 
 
 }
-
 
 
 
@@ -852,7 +869,6 @@ data:subscriptions
 
 
 }
-
 
 
 
@@ -900,26 +916,34 @@ SubscriptionStatus.CANCELED
 
 
 
-
 throw new WorkerError({
+
 
 code:
 ErrorCode.NOT_FOUND,
 
+
 message:
 "Route not found",
 
+
+
 metadata:{
+
 
 path:
 url.pathname,
 
+
 stage:
 "SubscriptionPipeline"
 
+
 }
 
+
 });
+
 
 
 }
