@@ -33,21 +33,23 @@
 - [x] D1BillingRepository
 - [x] D1PlanRepository
 
-## Milestone 5 — Bug Fixes & Hardening 🔄 CURRENT
-- [ ] BUG-001: Fix usage table column mismatch (endpoint vs path)
-- [ ] BUG-002: Fix PolicyResolver — add missing allowed routes
-- [ ] BUG-003: Fix Stripe key — read from env, not hardcoded
-- [ ] BUG-004: Fix listSubscriptions filter logic
-- [ ] BUG-005: Normalize SubscriptionStatus enum values
-- [ ] BUG-006: Implement real Stripe webhook signature verification
-- [ ] BUG-007: Deduplicate Env interface
-- [ ] BUG-008: Set real D1 database_id in wrangler.toml
+## Milestone 5 — Bug Fixes & Hardening ✅ DONE
+- [x] BUG-001: Fix usage table column mismatch (endpoint vs path)
+- [x] BUG-002: Fix PolicyResolver — add missing allowed routes
+- [x] BUG-003: Fix payment provider key — read from env, not hardcoded
+- [x] BUG-004: Fix listSubscriptions filter logic
+- [x] BUG-005: Normalize SubscriptionStatus enum values
+- [x] BUG-006: Implement real payment webhook/callback verification
+- [x] BUG-007: Deduplicate Env interface
+- [x] BUG-008: Set real D1 database_id in wrangler.toml
 
-## Milestone 6 — Real Stripe Integration ⏳
-- [ ] Real Stripe API calls in StripeClient
-- [ ] HMAC-SHA256 webhook signature verification
-- [ ] Stripe webhook event handling (subscription activated, payment failed, etc.)
-- [ ] Plan upgrade/downgrade on payment events
+## Milestone 6 — Real Payment Integration ✅ DONE
+> Decision (2026-09-02): switched from Stripe to ZarinPal. Stripe does not support
+> Iran-based accounts or Iranian cardholders due to sanctions, and this platform's
+> users are in Iran. ZarinPal is the standard domestic gateway instead.
+- [x] Real ZarinPal REST calls in ZarinpalClient (request + verify)
+- [x] Payment callback handling (ZarinPal uses a redirect callback, not a webhook)
+- [x] Plan pricing table (PlanPrices) and subscription activation on verified payment
 
 ## Milestone 7 — Validation Layer ⏳
 - [ ] Request body validation for all POST endpoints
@@ -58,7 +60,7 @@
 - [ ] Unit tests: Repository layer
 - [ ] Unit tests: Service layer
 - [ ] Integration tests: Full pipeline flows
-- [ ] Integration tests: Stripe webhook flow
+- [ ] Integration tests: ZarinPal payment callback flow
 
 ## Milestone 9 — Observability ⏳
 - [ ] Structured logging (request/response logging)

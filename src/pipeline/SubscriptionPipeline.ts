@@ -44,8 +44,8 @@ import { PaymentService }
 from "../core/payments/PaymentService";
 
 
-import { StripeClient }
-from "../core/payments/StripeClient";
+import { ZarinpalClient }
+from "../core/payments/ZarinpalClient";
 
 
 import { SubscriptionStatus }
@@ -76,7 +76,7 @@ import { PlanService }
 from "../core/plans/PlanService";
 
 
-import { PlanType }
+import { PlanType, PlanPrices }
 from "../core/plans/PlanTypes";
 
 
@@ -139,8 +139,8 @@ private planService:PlanService;
 
 constructor(
 db:D1Database,
-stripeSecretKey:string,
-stripeWebhookSecret:string
+zarinpalMerchantId:string,
+zarinpalSandbox:boolean
 ){
 
 
@@ -236,11 +236,11 @@ billingRepo
 this.paymentService =
 new PaymentService(
 
-new StripeClient(
+new ZarinpalClient(
 
-stripeSecretKey,
+zarinpalMerchantId,
 
-stripeWebhookSecret
+zarinpalSandbox
 
 )
 
@@ -341,40 +341,92 @@ data:key
 
 
 }if(
-url.pathname === "/webhook/stripe"
+url.pathname === "/payment/callback"
 &&
-method === "POST"
+method === "GET"
 ){
 
 
 
-const payload =
-await request.text();
+const authority =
+url.searchParams.get("Authority") || "";
+
+const status =
+url.searchParams.get("Status") || "";
+
+const subscriptionId =
+url.searchParams.get("subscriptionId") || "";
+
+const plan =
+url.searchParams.get("plan") || "";
 
 
 
-const signature =
-request.headers.get(
-"stripe-signature"
-)
-|| "";
+if(status !== "OK"){
+
+return {
+
+success:false,
+
+data:{ message:"Payment cancelled" }
+
+};
+
+}
 
 
 
-const valid =
-await this.paymentService.verifyWebhook(
+if(!authority || !subscriptionId || !plan){
 
-payload,
+throw new WorkerError({
 
-signature
+code:
+
+ErrorCode.BAD_REQUEST,
+
+message:
+
+"Missing payment callback parameters"
+
+});
+
+}
+
+
+
+const amount =
+PlanPrices[plan as keyof typeof PlanPrices];
+
+if(amount === undefined){
+
+throw new WorkerError({
+
+code:
+
+ErrorCode.BAD_REQUEST,
+
+message:
+
+`Unknown plan: ${plan}`
+
+});
+
+}
+
+
+
+const result =
+await this.paymentService.verifyPayment(
+
+authority,
+
+amount
 
 );
 
 
 
-if(!valid){
-
-
+if(!result.verified){
 
 throw new WorkerError({
 
@@ -382,32 +434,13 @@ code:
 
 ErrorCode.UNAUTHORIZED,
 
-
 message:
 
-"Invalid webhook"
+"Payment verification failed"
 
 });
 
-
 }
-
-
-
-const event =
-JSON.parse(payload);
-
-
-
-if(
-event.type ===
-"checkout.session.completed"
-){
-
-
-
-const subscriptionId =
-event.data.object.metadata.subscriptionId;
 
 
 
@@ -421,13 +454,11 @@ SubscriptionStatus.ACTIVE
 
 
 
-}
-
-
-
 return {
 
-success:true
+success:true,
+
+data:{ refId:result.refId }
 
 };
 
@@ -477,16 +508,23 @@ await request.json() as {
 
 plan:string;
 
+subscriptionId:string;
+
 };
+
+
+
+const callbackUrl =
+`${url.origin}/payment/callback?subscriptionId=${encodeURIComponent(body.subscriptionId)}&plan=${encodeURIComponent(body.plan)}`;
 
 
 
 const session =
 await this.paymentService.createCheckout(
 
-context.ownerId,
+body.plan,
 
-body.plan
+callbackUrl
 
 );
 

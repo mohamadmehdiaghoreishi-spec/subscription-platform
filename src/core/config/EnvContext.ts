@@ -2,8 +2,8 @@ export interface Env {
 
   DB: D1Database;
 
-  STRIPE_SECRET_KEY: string;
+  ZARINPAL_MERCHANT_ID: string;
 
-  STRIPE_WEBHOOK_SECRET: string;
+  ZARINPAL_SANDBOX: string;
 
 }

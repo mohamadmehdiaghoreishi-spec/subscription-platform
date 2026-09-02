@@ -57,7 +57,7 @@ export default {
 
 
       const pipeline =
-        new SubscriptionPipeline(env.DB, env.STRIPE_SECRET_KEY, env.STRIPE_WEBHOOK_SECRET);
+        new SubscriptionPipeline(env.DB, env.ZARINPAL_MERCHANT_ID, env.ZARINPAL_SANDBOX === "true");
 
 
 

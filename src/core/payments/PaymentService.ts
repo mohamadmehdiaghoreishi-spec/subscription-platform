@@ -1,4 +1,5 @@
-import { StripeClient } from "./StripeClient";
+import { ZarinpalClient } from "./ZarinpalClient";
+import { PlanPrices } from "../plans/PlanTypes";
 
 
 export class PaymentService {
@@ -7,7 +8,7 @@ export class PaymentService {
 
   constructor(
 
-    private stripe:StripeClient
+    private zarinpal:ZarinpalClient
 
   ) {}
 
@@ -17,29 +18,43 @@ export class PaymentService {
 
   async createCheckout(
 
-    subscriptionId:string,
+    plan:string,
 
-    plan:string
+    callbackUrl:string
 
   ){
 
 
 
-    return this.stripe.createCheckoutSession({
+    const amount =
+      (PlanPrices as Record<string, number>)[plan];
 
-      subscriptionId,
+    if(amount === undefined){
 
-      plan,
+      throw new Error(`Unknown plan: ${plan}`);
 
+    }
 
-      successUrl:
-        "https://app/success",
+    const result =
+      await this.zarinpal.requestPayment({
 
+        amount,
 
-      cancelUrl:
-        "https://app/cancel"
+        description:`Subscription plan: ${plan}`,
 
-    });
+        callbackUrl
+
+      });
+
+    return {
+
+      url:result.paymentUrl,
+
+      authority:result.authority,
+
+      amount
+
+    };
 
 
   }
@@ -48,22 +63,21 @@ export class PaymentService {
 
 
 
+  async verifyPayment(
 
-  async verifyWebhook(
+    authority:string,
 
-    payload:string,
-
-    signature:string
+    amount:number
 
   ){
 
 
 
-    return this.stripe.verifyWebhook(
+    return this.zarinpal.verifyPayment(
 
-      payload,
+      authority,
 
-      signature
+      amount
 
     );
 
