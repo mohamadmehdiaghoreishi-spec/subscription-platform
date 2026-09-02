@@ -32,6 +32,10 @@ export class PolicyResolver {
 
       "/billing",
 
+      "/auth/keys",
+
+      "/auth/revoke-key",
+
     ];
 
 

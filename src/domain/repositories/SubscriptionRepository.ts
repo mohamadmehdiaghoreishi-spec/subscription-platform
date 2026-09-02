@@ -2,7 +2,7 @@ export interface SubscriptionEntity {
 
   id: string;
 
-  subscriptionId: string;
+  ownerId: string;
 
   node: string;
 
@@ -24,8 +24,8 @@ export interface ISubscriptionRepository {
     id: string
   ): Promise<SubscriptionEntity | null>;
 
-  findBySubscriptionId(
-    subscriptionId: string
+  findByOwnerId(
+    ownerId: string
   ): Promise<SubscriptionEntity[]>;
 
   list(): Promise<SubscriptionEntity[]>;

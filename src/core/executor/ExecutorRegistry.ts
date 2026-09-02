@@ -10,7 +10,7 @@ export class ExecutorRegistry {
   ) {}
 
   async createSubscription(
-    subscriptionId: string,
+    ownerId: string,
     node: SelectedNode,
     payload: unknown
   ): Promise<SubscriptionEntity> {
@@ -19,7 +19,7 @@ export class ExecutorRegistry {
 
       id: crypto.randomUUID(),
 
-      subscriptionId,
+      ownerId,
 
       node: node.type,
 
@@ -71,11 +71,11 @@ export class ExecutorRegistry {
   }
 
   async listSubscriptions(
-    subscriptionId: string
+    ownerId: string
   ): Promise<SubscriptionEntity[]> {
 
-    return this.repository.findBySubscriptionId(
-      subscriptionId
+    return this.repository.findByOwnerId(
+      ownerId
     );
 
   }

@@ -2,8 +2,8 @@ export interface Env {
 
   DB: D1Database;
 
-  SERVER_ADDRESS?: string;
+  STRIPE_SECRET_KEY: string;
 
-  REALITY_PUBLIC_KEY?: string;
+  STRIPE_WEBHOOK_SECRET: string;
 
 }

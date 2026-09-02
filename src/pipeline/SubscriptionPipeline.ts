@@ -138,7 +138,9 @@ private planService:PlanService;
 
 
 constructor(
-db:D1Database
+db:D1Database,
+stripeSecretKey:string,
+stripeWebhookSecret:string
 ){
 
 
@@ -236,7 +238,9 @@ new PaymentService(
 
 new StripeClient(
 
-"STRIPE_SECRET_KEY"
+stripeSecretKey,
+
+stripeWebhookSecret
 
 )
 

@@ -1,10 +1,8 @@
 import { SubscriptionPipeline } from "./pipeline/SubscriptionPipeline";
 import { ErrorBoundary } from "./core/errors/ErrorBoundary";
+import { Env } from "./core/config/EnvContext";
 
-
-export interface Env {
-  DB: D1Database;
-}
+export type { Env };
 
 
 
@@ -59,7 +57,7 @@ export default {
 
 
       const pipeline =
-        new SubscriptionPipeline(env.DB);
+        new SubscriptionPipeline(env.DB, env.STRIPE_SECRET_KEY, env.STRIPE_WEBHOOK_SECRET);
 
 
 

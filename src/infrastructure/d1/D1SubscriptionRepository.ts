@@ -15,7 +15,7 @@ export class D1SubscriptionRepository {
 INSERT INTO subscriptions
 (
   id,
-  subscriptionId,
+  ownerId,
   node,
   status,
   payload,
@@ -34,7 +34,7 @@ VALUES
     )
     .bind(
       data.id,
-      data.subscriptionId,
+      data.ownerId,
       data.node,
       data.status,
       JSON.stringify(data.payload),
@@ -67,7 +67,7 @@ WHERE id = ?
 
     return {
       id: result.id,
-      subscriptionId: result.subscriptionId,
+      ownerId: result.ownerId,
       node: result.node,
       status: result.status,
       payload: JSON.parse(result.payload),
@@ -76,8 +76,8 @@ WHERE id = ?
 
   }
 
-  async findBySubscriptionId(
-    subscriptionId: string
+  async findByOwnerId(
+    ownerId: string
   ): Promise<SubscriptionEntity[]> {
 
     const result =
@@ -85,16 +85,16 @@ WHERE id = ?
 `
 SELECT *
 FROM subscriptions
-WHERE subscriptionId = ?
+WHERE ownerId = ?
 ORDER BY createdAt DESC
 `
       )
-      .bind(subscriptionId)
+      .bind(ownerId)
       .all<any>();
 
     return (result.results ?? []).map((row: any) => ({
       id: row.id,
-      subscriptionId: row.subscriptionId,
+      ownerId: row.ownerId,
       node: row.node,
       status: row.status,
       payload: JSON.parse(row.payload),
@@ -117,7 +117,7 @@ ORDER BY createdAt DESC
 
     return (result.results ?? []).map((row: any) => ({
       id: row.id,
-      subscriptionId: row.subscriptionId,
+      ownerId: row.ownerId,
       node: row.node,
       status: row.status,
       payload: JSON.parse(row.payload),

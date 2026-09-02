@@ -1,6 +1,6 @@
 export enum SubscriptionStatus {
 
-  CREATED = "created",
+  CREATED = "CREATED",
 
   ACTIVE = "ACTIVE",
 
