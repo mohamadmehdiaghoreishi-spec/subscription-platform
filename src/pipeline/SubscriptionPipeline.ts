@@ -79,6 +79,14 @@ from "../core/plans/PlanService";
 import { PlanType, PlanPrices }
 from "../core/plans/PlanTypes";
 
+import {
+  validateCreateKeyBody,
+  validateRevokeKeyBody,
+  validateCheckoutBody,
+  validateSubscribeBody
+}
+from "../core/validation/RequestSchemas";
+
 
 import { SubscriptionContext }
 from "../core/context/SubscriptionContext";
@@ -292,33 +300,9 @@ method === "POST"
 
 
 const body =
-await request.json() as {
-
-subscriptionId:string;
-
-};
-
-
-
-if(!body.subscriptionId){
-
-
-
-throw new WorkerError({
-
-code:
-
-ErrorCode.BAD_REQUEST,
-
-
-message:
-
-"subscriptionId required"
-
-});
-
-
-}
+validateCreateKeyBody(
+await request.json()
+);
 
 
 
@@ -504,13 +488,9 @@ method === "POST"
 
 
 const body =
-await request.json() as {
-
-plan:string;
-
-subscriptionId:string;
-
-};
+validateCheckoutBody(
+await request.json()
+);
 
 
 
@@ -622,11 +602,9 @@ method === "POST"
 
 
 const body =
-await request.json() as {
-
-key:string;
-
-};
+validateRevokeKeyBody(
+await request.json()
+);
 
 
 
@@ -662,13 +640,9 @@ method === "POST"
 
 
 const body =
-await request.json() as {
-
-plan?:PlanType;
-
-[key:string]:unknown;
-
-};
+validateSubscribeBody(
+await request.json()
+);
 
 
 

@@ -51,10 +51,10 @@
 - [x] Payment callback handling (ZarinPal uses a redirect callback, not a webhook)
 - [x] Plan pricing table (PlanPrices) and subscription activation on verified payment
 
-## Milestone 7 — Validation Layer ⏳
-- [ ] Request body validation for all POST endpoints
-- [ ] Dedicated validation layer (not in pipeline or services)
-- [ ] Typed request schemas
+## Milestone 7 — Validation Layer ✅ DONE
+- [x] Request body validation for all POST endpoints
+- [x] Dedicated validation layer (not in pipeline or services)
+- [x] Typed request schemas
 
 ## Milestone 8 — Test Coverage ⏳
 - [ ] Unit tests: Repository layer
