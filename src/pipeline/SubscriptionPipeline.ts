@@ -921,11 +921,10 @@ method === "POST"
 
 
 
-await this.executor.updateSubscriptionStatus(
+const cancelled =
+await this.executor.cancelSubscription(
 
-context.ownerId,
-
-SubscriptionStatus.CANCELED
+context.ownerId
 
 );
 
@@ -939,7 +938,7 @@ success:true,
 
 status:
 
-SubscriptionStatus.CANCELED
+cancelled.status
 
 };
 

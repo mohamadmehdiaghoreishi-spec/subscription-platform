@@ -2,6 +2,7 @@ import { D1SubscriptionRepository } from "../../infrastructure/d1/D1Subscription
 import { SubscriptionEntity } from "../../domain/repositories/SubscriptionRepository";
 import { SubscriptionStatus } from "../../domain/entities/SubscriptionStatus";
 import { SelectedNode } from "../routing/NodeSelector";
+import { WorkerError, ErrorCode } from "../errors/WorkerError";
 
 export class ExecutorRegistry {
 
@@ -81,12 +82,47 @@ export class ExecutorRegistry {
   }
 
   async getSubscription(
-    id: string
+    ownerId: string
   ): Promise<SubscriptionEntity | null> {
 
-    return this.repository.findById(
-      id
+    const subscriptions =
+      await this.repository.findByOwnerId(
+        ownerId
+      );
+
+    return subscriptions[0] ?? null;
+
+  }
+
+  async cancelSubscription(
+    ownerId: string
+  ): Promise<SubscriptionEntity> {
+
+    const subscriptions =
+      await this.repository.findByOwnerId(
+        ownerId
+      );
+
+    const current = subscriptions[0];
+
+    if (!current) {
+
+      throw new WorkerError({
+        code: ErrorCode.NOT_FOUND,
+        message: "Subscription not found"
+      });
+
+    }
+
+    await this.repository.updateStatus(
+      current.id,
+      SubscriptionStatus.CANCELED
     );
+
+    return {
+      ...current,
+      status: SubscriptionStatus.CANCELED
+    };
 
   }
 
