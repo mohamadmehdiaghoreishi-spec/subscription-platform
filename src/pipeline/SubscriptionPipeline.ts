@@ -127,6 +127,8 @@ private quota:QuotaGuard;
 
 private usageLogger:UsageLogger;
 
+private usageRepo:D1UsageRepository;
+
 
 private executor:ExecutorRegistry;
 
@@ -165,6 +167,8 @@ new D1ApiKeyRepository(db);
 
 const usageRepo =
 new D1UsageRepository(db);
+
+this.usageRepo = usageRepo;
 
 
 
@@ -523,6 +527,49 @@ data:session
 
 
 
+
+
+
+
+if(
+url.pathname === "/usage/summary"
+&&
+method === "GET"
+){
+
+
+
+const [ total, byDay, byPath ] =
+await Promise.all([
+
+this.usageRepo.totalCount(context.ownerId),
+
+this.usageRepo.countByDay(context.ownerId, 7),
+
+this.usageRepo.countByPath(context.ownerId)
+
+]);
+
+
+
+return {
+
+success:true,
+
+data:{
+
+total,
+
+last7Days:byDay,
+
+byPath
+
+}
+
+};
+
+
+}
 
 
 

@@ -36,6 +36,8 @@ export class PolicyResolver {
 
       "/auth/revoke-key",
 
+      "/usage",
+
     ];
 
 

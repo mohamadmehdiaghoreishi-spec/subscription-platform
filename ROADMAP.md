@@ -62,10 +62,10 @@
 - [ ] Integration tests: Full pipeline flows
 - [ ] Integration tests: ZarinPal payment callback flow
 
-## Milestone 9 — Observability ⏳
-- [ ] Structured logging (request/response logging)
-- [ ] Error tracking integration
-- [ ] Usage analytics endpoint
+## Milestone 9 — Observability ✅ DONE
+- [x] Structured logging (request/response logging)
+- [x] Error tracking integration (structured error logs with WorkerError code)
+- [x] Usage analytics endpoint (GET /usage/summary)
 
 ## Milestone 10 — Production Deploy ⏳
 - [ ] Create production D1 database

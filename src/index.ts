@@ -1,6 +1,8 @@
 import { SubscriptionPipeline } from "./pipeline/SubscriptionPipeline";
 import { ErrorBoundary } from "./core/errors/ErrorBoundary";
 import { Env } from "./core/config/EnvContext";
+import { Logger } from "./core/logging/Logger";
+import { isWorkerError } from "./core/errors/WorkerError";
 
 export type { Env };
 
@@ -14,17 +16,30 @@ export default {
   ): Promise<Response> {
 
 
+    const requestId = crypto.randomUUID();
+
+    const startedAt = Date.now();
+
+    const url = new URL(request.url);
+
+    Logger.info("request.start", {
+
+      requestId,
+
+      method: request.method,
+
+      path: url.pathname
+
+    });
+
+
     try {
-
-
-      const url = new URL(request.url);
-
 
 
       if(url.pathname === "/"){
 
 
-        return new Response(
+        const response = new Response(
 
           JSON.stringify({
 
@@ -50,6 +65,22 @@ export default {
 
         );
 
+        Logger.info("request.end", {
+
+          requestId,
+
+          method: request.method,
+
+          path: url.pathname,
+
+          status: 200,
+
+          durationMs: Date.now() - startedAt
+
+        });
+
+        return response;
+
 
       }
 
@@ -67,7 +98,7 @@ export default {
 
 
 
-      return new Response(
+      const response = new Response(
 
         JSON.stringify({
 
@@ -93,14 +124,48 @@ export default {
 
       );
 
+      Logger.info("request.end", {
+
+        requestId,
+
+        method: request.method,
+
+        path: url.pathname,
+
+        status: 200,
+
+        durationMs: Date.now() - startedAt
+
+      });
+
+      return response;
+
 
 
     } catch(error){
 
 
+      const response = ErrorBoundary.toResponse(error);
 
-      return ErrorBoundary.toResponse(error);
+      Logger.error("request.error", {
 
+        requestId,
+
+        method: request.method,
+
+        path: url.pathname,
+
+        status: response.status,
+
+        durationMs: Date.now() - startedAt,
+
+        code: isWorkerError(error) ? error.code : "UNKNOWN_ERROR",
+
+        message: error instanceof Error ? error.message : String(error)
+
+      });
+
+      return response;
 
 
     }
