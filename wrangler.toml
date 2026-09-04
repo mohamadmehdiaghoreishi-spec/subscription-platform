@@ -7,4 +7,4 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "subscription-db"
-database_id = "42652be7-efd6-4bab-98c6-312f3733ab3d"
+database_id = "ecde43ee-2c15-4c5f-a9c1-bad5080159c1"
