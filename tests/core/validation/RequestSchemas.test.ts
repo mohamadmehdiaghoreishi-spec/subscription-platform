@@ -41,22 +41,20 @@ describe("RequestSchemas", () => {
 
   describe("validateCheckoutBody", () => {
 
-    it("accepts a valid plan and subscriptionId", () => {
+    it("accepts a valid plan, ignoring any extra fields the client sends", () => {
+      expect(validateCheckoutBody({ plan: "PRO" }))
+        .toEqual({ plan: "PRO" });
       expect(validateCheckoutBody({ plan: "PRO", subscriptionId: "owner-1" }))
-        .toEqual({ plan: "PRO", subscriptionId: "owner-1" });
+        .toEqual({ plan: "PRO" });
     });
 
     it("rejects an unknown plan", () => {
-      expect(() => validateCheckoutBody({ plan: "NOT_A_PLAN", subscriptionId: "owner-1" }))
+      expect(() => validateCheckoutBody({ plan: "NOT_A_PLAN" }))
         .toThrow();
     });
 
     it("rejects a missing plan", () => {
-      expect(() => validateCheckoutBody({ subscriptionId: "owner-1" })).toThrow();
-    });
-
-    it("rejects a missing subscriptionId", () => {
-      expect(() => validateCheckoutBody({ plan: "PRO" })).toThrow();
+      expect(() => validateCheckoutBody({})).toThrow();
     });
 
   });

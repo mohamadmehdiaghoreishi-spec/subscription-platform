@@ -12,7 +12,8 @@ export default {
 
   async fetch(
     request: Request,
-    env: Env
+    env: Env,
+    _ctx: ExecutionContext
   ): Promise<Response> {
 
 

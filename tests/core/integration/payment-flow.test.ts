@@ -42,7 +42,7 @@ describe("Zarinpal payment flow (integration)", () => {
     const checkout = await call("/billing/checkout", {
       method: "POST",
       headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ plan: "PRO", subscriptionId: "owner-1" }),
+      body: JSON.stringify({ plan: "PRO" }),
     });
 
     expect(checkout.status).toBe(200);
@@ -60,12 +60,25 @@ describe("Zarinpal payment flow (integration)", () => {
     const checkout = await call("/billing/checkout", {
       method: "POST",
       headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ plan: "NOT_A_PLAN", subscriptionId: "owner-2" }),
+      body: JSON.stringify({ plan: "NOT_A_PLAN" }),
     });
 
     // Milestone 7's validation layer now rejects an unknown plan name
     // before it ever reaches PaymentService/Zarinpal.
     expect(checkout.status).toBe(400);
+  });
+
+  it("rejects checkout without authentication", async () => {
+
+    vi.stubGlobal("fetch", vi.fn());
+
+    const checkout = await call("/billing/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan: "PRO" }),
+    });
+
+    expect(checkout.status).toBe(401);
   });
 
   it("payment/callback with Status != OK reports the payment as cancelled, without calling Zarinpal", async () => {
@@ -74,7 +87,7 @@ describe("Zarinpal payment flow (integration)", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await call(
-      "/payment/callback?Authority=A1&Status=NOK&subscriptionId=owner-3&plan=PRO",
+      "/payment/callback?Authority=A1&Status=NOK&ownerId=owner-3&plan=PRO",
       { method: "GET" }
     );
 
@@ -95,6 +108,13 @@ describe("Zarinpal payment flow (integration)", () => {
 
   it("payment/callback verifies the payment against Zarinpal using the plan's price", async () => {
 
+    const apiKey = await createApiKey("owner-4");
+    await call("/subscribe", {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
     const fetchMock = vi.fn(async (url: string, options: any) => {
 
       const body = JSON.parse(options.body);
@@ -110,7 +130,7 @@ describe("Zarinpal payment flow (integration)", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await call(
-      "/payment/callback?Authority=AUTH-CB&Status=OK&subscriptionId=owner-4&plan=PRO",
+      "/payment/callback?Authority=AUTH-CB&Status=OK&ownerId=owner-4&plan=PRO",
       { method: "GET" }
     );
 
@@ -120,6 +140,20 @@ describe("Zarinpal payment flow (integration)", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("payment/callback returns 404 when the owner has no subscription to activate", async () => {
+
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      json: async () => ({ data: { code: 100, ref_id: 1 } }),
+    } as Response)));
+
+    const result = await call(
+      "/payment/callback?Authority=AUTH-NOSUB&Status=OK&ownerId=owner-nobody&plan=PRO",
+      { method: "GET" }
+    );
+
+    expect(result.status).toBe(404);
+  });
+
   it("payment/callback rejects when Zarinpal reports the payment as not verified", async () => {
 
     vi.stubGlobal("fetch", vi.fn(async () => ({
@@ -127,28 +161,21 @@ describe("Zarinpal payment flow (integration)", () => {
     } as Response)));
 
     const result = await call(
-      "/payment/callback?Authority=AUTH-BAD&Status=OK&subscriptionId=owner-5&plan=PRO",
+      "/payment/callback?Authority=AUTH-BAD&Status=OK&ownerId=owner-5&plan=PRO",
       { method: "GET" }
     );
 
     expect(result.status).toBe(401);
   });
 
-  // --- Known remaining bug (not touched — outside the tests/ folder) ---
-  //
-  // BUG-004 was fixed for GET /subscription and POST /subscription/cancel
-  // (see full-lifecycle.test.ts), but the Zarinpal payment callback still
-  // activates a subscription via the old
-  // ExecutorRegistry.updateSubscriptionStatus(subscriptionId, ACTIVE),
-  // which filters `WHERE id = ?` — a real subscription row's primary key,
-  // not the ownerId value the callback actually has. So the callback
-  // reports success, but the subscription's status in the database never
-  // actually changes to ACTIVE.
-  //
-  // Marked `.fails` so the suite stays green. Once the payment callback is
-  // switched to an owner-scoped activation method, remove `.fails`.
-
-  it.fails("a subscription actually becomes ACTIVE in the database after a verified payment", async () => {
+  // Regression test for a bug found while writing this suite: the checkout
+  // step used to require the client to pass an arbitrary "subscriptionId"
+  // field, disconnected from the authenticated caller, which (a) was
+  // confusing next to every other endpoint using only ownerId, and (b) let
+  // a client name *any* subscription id, not necessarily its own. Checkout
+  // and the payment callback now resolve the subscription to activate via
+  // the authenticated ownerId only.
+  it("a subscription actually becomes ACTIVE in the database after a verified payment", async () => {
 
     const apiKey = await createApiKey("owner-6");
     const headers = { "x-api-key": apiKey, "Content-Type": "application/json" };
@@ -160,13 +187,39 @@ describe("Zarinpal payment flow (integration)", () => {
     } as Response)));
 
     const callback = await call(
-      "/payment/callback?Authority=AUTH-REAL&Status=OK&subscriptionId=owner-6&plan=PRO",
+      "/payment/callback?Authority=AUTH-REAL&Status=OK&ownerId=owner-6&plan=PRO",
       { method: "GET" }
     );
     expect(callback.status).toBe(200);
 
     const list = await call("/subscriptions", { headers });
     expect(list.body.data.data[0].status).toBe("ACTIVE");
+  });
+
+  it("activating a subscription for one owner never touches another owner's subscription", async () => {
+
+    const apiKeyA = await createApiKey("owner-7a");
+    const apiKeyB = await createApiKey("owner-7b");
+    const headersA = { "x-api-key": apiKeyA, "Content-Type": "application/json" };
+    const headersB = { "x-api-key": apiKeyB, "Content-Type": "application/json" };
+
+    await call("/subscribe", { method: "POST", headers: headersA, body: JSON.stringify({}) });
+    await call("/subscribe", { method: "POST", headers: headersB, body: JSON.stringify({}) });
+
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      json: async () => ({ data: { code: 100, ref_id: 1000 } }),
+    } as Response)));
+
+    await call(
+      "/payment/callback?Authority=AUTH-A&Status=OK&ownerId=owner-7a&plan=PRO",
+      { method: "GET" }
+    );
+
+    const listA = await call("/subscriptions", { headers: headersA });
+    const listB = await call("/subscriptions", { headers: headersB });
+
+    expect(listA.body.data.data[0].status).toBe("ACTIVE");
+    expect(listB.body.data.data[0].status).toBe("CREATED");
   });
 
 });

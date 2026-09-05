@@ -59,18 +59,6 @@ export class ExecutorRegistry {
 
   }
 
-  async updateSubscriptionStatus(
-    id: string,
-    status: SubscriptionStatus
-  ): Promise<void> {
-
-    await this.repository.updateStatus(
-      id,
-      status
-    );
-
-  }
-
   async listSubscriptions(
     ownerId: string
   ): Promise<SubscriptionEntity[]> {
@@ -98,6 +86,29 @@ export class ExecutorRegistry {
     ownerId: string
   ): Promise<SubscriptionEntity> {
 
+    return this.setStatusByOwner(
+      ownerId,
+      SubscriptionStatus.CANCELED
+    );
+
+  }
+
+  async activateSubscription(
+    ownerId: string
+  ): Promise<SubscriptionEntity> {
+
+    return this.setStatusByOwner(
+      ownerId,
+      SubscriptionStatus.ACTIVE
+    );
+
+  }
+
+  private async setStatusByOwner(
+    ownerId: string,
+    status: SubscriptionStatus
+  ): Promise<SubscriptionEntity> {
+
     const subscriptions =
       await this.repository.findByOwnerId(
         ownerId
@@ -116,12 +127,12 @@ export class ExecutorRegistry {
 
     await this.repository.updateStatus(
       current.id,
-      SubscriptionStatus.CANCELED
+      status
     );
 
     return {
       ...current,
-      status: SubscriptionStatus.CANCELED
+      status
     };
 
   }

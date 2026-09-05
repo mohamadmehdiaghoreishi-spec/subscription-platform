@@ -48,8 +48,6 @@ import { ZarinpalClient }
 from "../core/payments/ZarinpalClient";
 
 
-import { SubscriptionStatus }
-from "../domain/entities/SubscriptionStatus";
 
 
 import { D1SubscriptionRepository }
@@ -342,8 +340,8 @@ url.searchParams.get("Authority") || "";
 const status =
 url.searchParams.get("Status") || "";
 
-const subscriptionId =
-url.searchParams.get("subscriptionId") || "";
+const ownerId =
+url.searchParams.get("ownerId") || "";
 
 const plan =
 url.searchParams.get("plan") || "";
@@ -364,7 +362,7 @@ data:{ message:"Payment cancelled" }
 
 
 
-if(!authority || !subscriptionId || !plan){
+if(!authority || !ownerId || !plan){
 
 throw new WorkerError({
 
@@ -432,11 +430,9 @@ message:
 
 
 
-await this.executor.updateSubscriptionStatus(
+await this.executor.activateSubscription(
 
-subscriptionId,
-
-SubscriptionStatus.ACTIVE
+ownerId
 
 );
 
@@ -499,7 +495,7 @@ await request.json()
 
 
 const callbackUrl =
-`${url.origin}/payment/callback?subscriptionId=${encodeURIComponent(body.subscriptionId)}&plan=${encodeURIComponent(body.plan)}`;
+`${url.origin}/payment/callback?ownerId=${encodeURIComponent(context.ownerId)}&plan=${encodeURIComponent(body.plan)}`;
 
 
 

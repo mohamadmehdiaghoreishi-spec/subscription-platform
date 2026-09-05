@@ -42,7 +42,6 @@ export function validateRevokeKeyBody(raw: unknown): RevokeKeyBody {
 
 export interface CheckoutBody {
   plan: PlanType;
-  subscriptionId: string;
 }
 
 export function validateCheckoutBody(raw: unknown): CheckoutBody {
@@ -50,8 +49,7 @@ export function validateCheckoutBody(raw: unknown): CheckoutBody {
   const body = asRecord(raw, "billing/checkout");
 
   return {
-    plan: requireOneOf(body, "plan", PLAN_VALUES),
-    subscriptionId: requireString(body, "subscriptionId")
+    plan: requireOneOf(body, "plan", PLAN_VALUES)
   };
 
 }

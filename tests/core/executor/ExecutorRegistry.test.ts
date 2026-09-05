@@ -104,10 +104,24 @@ describe("ExecutorRegistry", () => {
     await expect(executorNotFound.cancelSubscription("no-such-owner")).rejects.toThrow();
   });
 
-  // The equivalent bug is still present in the Zarinpal payment callback
-  // (see tests/core/integration/payment-flow.test.ts): activating a
-  // subscription after payment still goes through the old
-  // updateSubscriptionStatus(id, status), which filters by primary key
-  // "id" rather than "ownerId".
+  it("activateSubscription() looks up and activates by ownerId, and 404s when there's nothing to activate", async () => {
+
+    const found = fakeRepo({
+      findByOwnerId: vi.fn(async () => [
+        { id: "sub-2", ownerId: "owner-2", node: "default", status: SubscriptionStatus.CREATED, payload: {}, createdAt: "now" },
+      ]),
+    });
+    const executorFound = new ExecutorRegistry(found as any);
+
+    const activated = await executorFound.activateSubscription("owner-2");
+
+    expect(activated.status).toBe(SubscriptionStatus.ACTIVE);
+    expect(found.updateStatus).toHaveBeenCalledWith("sub-2", SubscriptionStatus.ACTIVE);
+
+    const notFound = fakeRepo({ findByOwnerId: vi.fn(async () => []) });
+    const executorNotFound = new ExecutorRegistry(notFound as any);
+
+    await expect(executorNotFound.activateSubscription("no-such-owner")).rejects.toThrow();
+  });
 
 });

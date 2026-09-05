@@ -111,13 +111,11 @@ describe("Full subscription lifecycle (integration)", () => {
     expect(list.body.data.data.every((s: any) => s.ownerId === "owner-4")).toBe(true);
   });
 
-  // BUG-004 (ROADMAP) is now fixed for these two routes: ExecutorRegistry
-  // added getSubscription()/cancelSubscription() methods that look up the
-  // row via ownerId instead of the row's own primary key "id".
-  //
-  // Note: the equivalent bug is still present in the Zarinpal payment
-  // callback (see tests/core/integration/payment-flow.test.ts) — payment
-  // activation still goes through the old updateSubscriptionStatus(id, status).
+  // BUG-004 (ROADMAP) is fully fixed: ExecutorRegistry's getSubscription(),
+  // cancelSubscription(), and activateSubscription() all resolve the row via
+  // ownerId instead of the row's own primary key "id" (see
+  // tests/core/integration/payment-flow.test.ts for the payment-activation
+  // case).
 
   it("GET /subscription returns the owner's most recent subscription", async () => {
 
