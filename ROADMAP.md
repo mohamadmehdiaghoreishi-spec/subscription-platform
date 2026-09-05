@@ -67,9 +67,9 @@
 - [x] Error tracking integration (structured error logs with WorkerError code)
 - [x] Usage analytics endpoint (GET /usage/summary)
 
-## Milestone 10 — Production Deploy ⏳
-- [ ] Create production D1 database
-- [ ] Apply all migrations to production
-- [ ] Set all secrets via wrangler secret
-- [ ] Deploy with `npm run deploy`
-- [ ] Smoke test all endpoints
+## Milestone 10 — Production Deploy ✅ DONE
+- [x] Create production D1 database
+- [x] Apply all migrations to production
+- [x] Set all secrets via wrangler secret
+- [x] Deploy with `npm run deploy`
+- [x] Smoke test all endpoints
