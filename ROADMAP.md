@@ -56,11 +56,11 @@
 - [x] Dedicated validation layer (not in pipeline or services)
 - [x] Typed request schemas
 
-## Milestone 8 — Test Coverage ⏳
-- [ ] Unit tests: Repository layer
-- [ ] Unit tests: Service layer
-- [ ] Integration tests: Full pipeline flows
-- [ ] Integration tests: ZarinPal payment callback flow
+## Milestone 8 — Test Coverage ✅ DONE
+- [x] Unit tests: Repository layer
+- [x] Unit tests: Service layer
+- [x] Integration tests: Full pipeline flows
+- [x] Integration tests: ZarinPal payment callback flow
 
 ## Milestone 9 — Observability ✅ DONE
 - [x] Structured logging (request/response logging)
