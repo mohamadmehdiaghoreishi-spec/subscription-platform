@@ -1,10 +1,15 @@
 name = "subscription-platform"
-
 main = "src/index.ts"
-
 compatibility_date = "2024-01-01"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "subscription-db"
 database_id = "ecde43ee-2c15-4c5f-a9c1-bad5080159c1"
+
+[env.production]
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "subscription-db-prod"
+database_id = "ae6b167f-3796-438f-8e35-caefe4842a33"
