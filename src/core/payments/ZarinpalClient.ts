@@ -1,3 +1,6 @@
+import { WorkerError } from "../errors/WorkerError";
+import { ErrorCode } from "../errors/ErrorCode";
+
 export interface ZarinpalPaymentRequest {
 
   amount: number; // Toman
@@ -78,9 +81,16 @@ export class ZarinpalClient {
 
     if (!json.data || json.data.code !== 100) {
 
-      throw new Error(
-        `Zarinpal payment request failed: ${JSON.stringify(json.errors ?? json)}`
-      );
+      throw new WorkerError({
+        code: ErrorCode.PAYMENT_GATEWAY_ERROR,
+        message: "پرداخت با خطا مواجه شد. لطفاً دوباره تلاش کنید.",
+        metadata: {
+          internalOnly: true,
+          provider: "zarinpal",
+          operation: "requestPayment",
+          raw: json.errors ?? json
+        }
+      });
 
     }
 

@@ -16,10 +16,21 @@ export class ErrorBoundary {
     // -------------------------
     if (isWorkerError(error)) {
 
+      const payload = error.toJSON();
+
+      const responseError =
+        payload.metadata?.internalOnly === true
+          ? { ...payload, metadata: undefined }
+          : payload;
+
+      if (payload.metadata?.internalOnly === true) {
+        console.error("[WorkerError:internal]", JSON.stringify(payload));
+      }
+
       return new Response(
         JSON.stringify({
           success: false,
-          error: error.toJSON(),
+          error: responseError,
           timestamp: new Date().toISOString()
         }),
         {

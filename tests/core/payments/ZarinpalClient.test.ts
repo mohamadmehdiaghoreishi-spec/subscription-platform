@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 import { ZarinpalClient } from "../../../src/core/payments/ZarinpalClient";
+import { WorkerError } from "../../../src/core/errors/WorkerError";
 
 function mockFetchOnce(status: number, body: unknown) {
   return vi.fn(async () => ({
@@ -75,7 +76,7 @@ describe("ZarinpalClient", () => {
         description: "d",
         callbackUrl: "https://example.com/cb",
       })
-    ).rejects.toThrow(/Zarinpal payment request failed/);
+    ).rejects.toThrow(WorkerError);
   });
 
   it("verifyPayment() reports verified:true for code 100 (verified now)", async () => {

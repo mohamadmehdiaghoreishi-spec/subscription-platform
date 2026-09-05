@@ -54,6 +54,10 @@ import { D1SubscriptionRepository }
 from "../infrastructure/d1/D1SubscriptionRepository";
 
 
+import { D1PaymentRepository }
+from "../infrastructure/d1/D1PaymentRepository";
+
+
 import { D1ApiKeyRepository }
 from "../infrastructure/d1/D1ApiKeyRepository";
 
@@ -128,6 +132,9 @@ private usageLogger:UsageLogger;
 private usageRepo:D1UsageRepository;
 
 
+private paymentRepo:D1PaymentRepository;
+
+
 private executor:ExecutorRegistry;
 
 
@@ -167,6 +174,13 @@ const usageRepo =
 new D1UsageRepository(db);
 
 this.usageRepo = usageRepo;
+
+
+
+const paymentRepo =
+new D1PaymentRepository(db);
+
+this.paymentRepo = paymentRepo;
 
 
 
@@ -380,6 +394,23 @@ message:
 
 
 
+const existingPayment =
+await this.paymentRepo.findByAuthority(authority);
+
+if(existingPayment){
+
+return {
+
+success:true,
+
+data:{ refId:existingPayment.refId }
+
+};
+
+}
+
+
+
 const amount =
 PlanPrices[plan as keyof typeof PlanPrices];
 
@@ -430,11 +461,51 @@ message:
 
 
 
+const claimed =
+await this.paymentRepo.tryClaim({
+
+authority,
+
+ownerId,
+
+amount,
+
+refId: result.refId ?? null,
+
+processedAt: new Date().toISOString()
+
+});
+
+if(!claimed){
+
+const winner =
+await this.paymentRepo.findByAuthority(authority);
+
+return {
+
+success:true,
+
+data:{ refId: winner?.refId ?? result.refId }
+
+};
+
+}
+
+try{
+
 await this.executor.activateSubscription(
 
 ownerId
 
 );
+
+}catch(err){
+
+await this.paymentRepo.deleteByAuthority(authority);
+
+throw err;
+
+}
 
 
 

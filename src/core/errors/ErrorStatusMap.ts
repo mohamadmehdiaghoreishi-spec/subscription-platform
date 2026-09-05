@@ -7,6 +7,7 @@ export const ErrorStatusMap: Record<ErrorCode, number> = {
   [ErrorCode.UNAUTHORIZED]: 401,
   [ErrorCode.FORBIDDEN]: 403,
   [ErrorCode.RATE_LIMITED]: 429,
+  [ErrorCode.PAYMENT_GATEWAY_ERROR]: 502,
   [ErrorCode.INTERNAL_ERROR]: 500,
   [ErrorCode.UNKNOWN_ERROR]: 500,
 };

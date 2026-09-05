@@ -222,4 +222,51 @@ describe("Zarinpal payment flow (integration)", () => {
     expect(listB.body.data.data[0].status).toBe("CREATED");
   });
 
+  it("processing the same Authority twice via /payment/callback does not double-activate or duplicate the subscription row", async () => {
+
+    const apiKey = await createApiKey("owner-8");
+    const headers = { "x-api-key": apiKey, "Content-Type": "application/json" };
+
+    await call("/subscribe", { method: "POST", headers, body: JSON.stringify({}) });
+
+    const countBefore = await env.DB
+      .prepare(`SELECT COUNT(*) as count FROM subscriptions`)
+      .first<{ count: number }>();
+    expect(countBefore?.count).toBe(1);
+
+    const fetchMock = vi.fn(async () => ({
+      json: async () => ({ data: { code: 100, ref_id: 4242 } }),
+    } as Response));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const firstCallback = await call(
+      "/payment/callback?Authority=AUTH-DUPLICATE&Status=OK&ownerId=owner-8&plan=PRO",
+      { method: "GET" }
+    );
+    expect(firstCallback.status).toBe(200);
+    expect(firstCallback.body.data.success).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const listAfterFirst = await call("/subscriptions", { headers });
+    expect(listAfterFirst.body.data.data).toHaveLength(1);
+    expect(listAfterFirst.body.data.data[0].status).toBe("ACTIVE");
+
+    const secondCallback = await call(
+      "/payment/callback?Authority=AUTH-DUPLICATE&Status=OK&ownerId=owner-8&plan=PRO",
+      { method: "GET" }
+    );
+
+    expect(secondCallback.status).toBeLessThan(500);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const countAfter = await env.DB
+      .prepare(`SELECT COUNT(*) as count FROM subscriptions`)
+      .first<{ count: number }>();
+    expect(countAfter?.count).toBe(1);
+
+    const listAfterSecond = await call("/subscriptions", { headers });
+    expect(listAfterSecond.body.data.data).toHaveLength(1);
+    expect(listAfterSecond.body.data.data[0].status).toBe("ACTIVE");
+  });
+
 });
