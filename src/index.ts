@@ -39,14 +39,40 @@ export default {
 
       if(url.pathname === "/"){
 
+        const dbCheckStartedAt = Date.now();
+        let dbHealthy = true;
+        let dbError: unknown = null;
+        try {
+          await env.DB.prepare("SELECT 1").first();
+        } catch (err) {
+          dbHealthy = false;
+          dbError = err;
+        }
+        const latencyMs = Date.now() - dbCheckStartedAt;
+        const status = dbHealthy ? "ok" : "error";
+        const httpStatus = dbHealthy ? 200 : 503;
+        if (!dbHealthy) {
+          Logger.error("health.db_check_failed", {
+            requestId,
+            latencyMs,
+            message: dbError instanceof Error ? dbError.message : String(dbError)
+          });
+        }
 
         const response = new Response(
 
           JSON.stringify({
 
-            status:"ok",
+            status,
 
-            message:"Subscription Platform Root",
+            message: dbHealthy
+              ? "Subscription Platform Root"
+              : "Database check failed",
+
+            db: {
+              status,
+              latencyMs
+            },
 
             timestamp:Date.now()
 
@@ -54,7 +80,7 @@ export default {
 
           {
 
-            status:200,
+            status:httpStatus,
 
             headers:{
 
@@ -74,7 +100,7 @@ export default {
 
           path: url.pathname,
 
-          status: 200,
+          status: httpStatus,
 
           durationMs: Date.now() - startedAt
 
