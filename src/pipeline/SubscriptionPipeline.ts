@@ -398,6 +398,47 @@ message:
 
 
 
+// The query string is client-controlled and must never be trusted to
+// say who a payment belongs to. Resolve the real owner/plan from the
+// checkout record saved server-side in /billing/checkout, keyed by
+// the Zarinpal-issued authority. No record => this authority never
+// went through our checkout => refuse to activate anything (fail
+// closed), but still answer 200 so this reads as a normal "payment
+// not recognized" outcome rather than a 5xx.
+const intent =
+await this.paymentRepo.findIntentByAuthority(authority);
+
+if(!intent){
+
+return {
+
+success:false,
+
+data:{ message:"Unrecognized payment authority" }
+
+};
+
+}
+
+if(intent.ownerId !== ownerId){
+
+Logger.warn("payment.callback.owner_mismatch", {
+
+authority,
+
+queryOwnerId: ownerId,
+
+intentOwnerId: intent.ownerId
+
+});
+
+}
+
+const trustedOwnerId = intent.ownerId;
+const trustedPlan = intent.plan;
+
+
+
 const existingPayment =
 await this.paymentRepo.findByAuthority(authority);
 
@@ -430,7 +471,7 @@ data:{ refId:existingPayment.refId }
 
 
 const amount =
-PlanPrices[plan as keyof typeof PlanPrices];
+PlanPrices[trustedPlan as keyof typeof PlanPrices];
 
 if(amount === undefined){
 
@@ -442,7 +483,7 @@ ErrorCode.BAD_REQUEST,
 
 message:
 
-`Unknown plan: ${plan}`
+`Unknown plan: ${trustedPlan}`
 
 });
 
@@ -457,7 +498,7 @@ authority,
 
 amount,
 
-ownerId
+trustedOwnerId
 
 );
 
@@ -486,7 +527,7 @@ await this.paymentRepo.tryClaim({
 
 authority,
 
-ownerId,
+ownerId: trustedOwnerId,
 
 amount,
 
@@ -529,7 +570,7 @@ try{
 
 await this.executor.activateSubscription(
 
-ownerId
+trustedOwnerId
 
 );
 
@@ -614,6 +655,23 @@ callbackUrl,
 context.ownerId
 
 );
+
+
+
+// Bind this authority to the authenticated caller BEFORE it's ever
+// sent to Zarinpal. /payment/callback resolves ownerId/plan from this
+// record instead of trusting the (client-controlled) query string.
+await this.paymentRepo.saveIntent({
+
+authority: session.authority,
+
+ownerId: context.ownerId,
+
+plan: body.plan,
+
+createdAt: new Date().toISOString()
+
+});
 
 
 
@@ -760,7 +818,9 @@ await request.json()
 
 await this.apiKeyService.revoke(
 
-body.key
+body.key,
+
+context.ownerId
 
 );
 
@@ -1148,4 +1208,3 @@ stage:
 
 
 }
-

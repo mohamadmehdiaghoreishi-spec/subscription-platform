@@ -54,19 +54,56 @@ describe("ApiKeyService", () => {
     expect(keys).toEqual([{ id: "k1" }]);
   });
 
-  it("revoke() delegates to repository.revoke()", async () => {
+  it("revoke() delegates to repository.revoke() when the caller owns the key", async () => {
 
     const repo = {
       create: vi.fn(),
       list: vi.fn(),
+      findByKey: vi.fn(async () => ({ key: "some-key", ownerId: "owner-1" })),
       revoke: vi.fn(async () => undefined),
     };
 
     const service = new ApiKeyService(repo as any);
 
-    await service.revoke("some-key");
+    await service.revoke("some-key", "owner-1");
 
     expect(repo.revoke).toHaveBeenCalledWith("some-key");
+  });
+
+  it("revoke() rejects when the caller does not own the key", async () => {
+
+    const repo = {
+      create: vi.fn(),
+      list: vi.fn(),
+      findByKey: vi.fn(async () => ({ key: "some-key", ownerId: "owner-1" })),
+      revoke: vi.fn(async () => undefined),
+    };
+
+    const service = new ApiKeyService(repo as any);
+
+    await expect(
+      service.revoke("some-key", "owner-2")
+    ).rejects.toThrow();
+
+    expect(repo.revoke).not.toHaveBeenCalled();
+  });
+
+  it("revoke() rejects when the key does not exist", async () => {
+
+    const repo = {
+      create: vi.fn(),
+      list: vi.fn(),
+      findByKey: vi.fn(async () => null),
+      revoke: vi.fn(async () => undefined),
+    };
+
+    const service = new ApiKeyService(repo as any);
+
+    await expect(
+      service.revoke("missing-key", "owner-1")
+    ).rejects.toThrow();
+
+    expect(repo.revoke).not.toHaveBeenCalled();
   });
 
 });

@@ -1,8 +1,10 @@
+// FILE: src/core/executor/ExecutorRegistry.ts
 import { D1SubscriptionRepository } from "../../infrastructure/d1/D1SubscriptionRepository";
 import { SubscriptionEntity } from "../../domain/repositories/SubscriptionRepository";
 import { SubscriptionStatus } from "../../domain/entities/SubscriptionStatus";
 import { SelectedNode } from "../routing/NodeSelector";
 import { WorkerError, ErrorCode } from "../errors/WorkerError";
+import { Logger } from "../logging/Logger";
 
 export class ExecutorRegistry {
 
@@ -122,6 +124,25 @@ export class ExecutorRegistry {
         code: ErrorCode.NOT_FOUND,
         message: "Subscription not found"
       });
+
+    }
+
+    if (
+      status === SubscriptionStatus.ACTIVE &&
+      current.status === SubscriptionStatus.CANCELED
+    ) {
+
+      // A cancellation raced ahead of a payment verification that was
+      // already in flight (e.g. the Zarinpal callback arriving after
+      // the owner cancelled). We refuse to silently reactivate — that
+      // needs a human decision (refund vs. honor the payment) — so we
+      // just log it as a conflict and leave the subscription CANCELED.
+      Logger.warn("subscription.activate.conflict_canceled", {
+        ownerId,
+        subscriptionId: current.id
+      });
+
+      return current;
 
     }
 

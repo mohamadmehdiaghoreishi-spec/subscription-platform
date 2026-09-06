@@ -1,3 +1,4 @@
+// FILE: tests/core/integration/payment-flow.test.ts
 import { env, createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 
@@ -19,6 +20,22 @@ async function createApiKey(ownerId: string) {
     body: JSON.stringify({ subscriptionId: ownerId }),
   });
   return created.body.data.data.key as string;
+}
+
+// Mocks BOTH Zarinpal endpoints (request.json for /billing/checkout and
+// verify.json for /payment/callback) behind a single fetch mock, since
+// tests now go through a real checkout before hitting the callback.
+function stubZarinpal(authority: string, verifyResponseData: Record<string, unknown>) {
+  return vi.fn(async (url: string) => {
+    if (String(url).includes("/request.json")) {
+      return {
+        json: async () => ({ data: { code: 100, authority } }),
+      } as Response;
+    }
+    return {
+      json: async () => ({ data: verifyResponseData }),
+    } as Response;
+  });
 }
 
 describe("Zarinpal payment flow (integration)", () => {
@@ -117,6 +134,12 @@ describe("Zarinpal payment flow (integration)", () => {
 
     const fetchMock = vi.fn(async (url: string, options: any) => {
 
+      if (String(url).includes("/request.json")) {
+        return {
+          json: async () => ({ data: { code: 100, authority: "AUTH-CB" } }),
+        } as Response;
+      }
+
       const body = JSON.parse(options.body);
 
       expect(body.amount).toBe(300000); // PRO plan price
@@ -129,25 +152,44 @@ describe("Zarinpal payment flow (integration)", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
+    const checkout = await call("/billing/checkout", {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ plan: "PRO" }),
+    });
+    const authority = checkout.body.data.data.authority;
+    expect(authority).toBe("AUTH-CB");
+
     const result = await call(
-      "/payment/callback?Authority=AUTH-CB&Status=OK&ownerId=owner-4&plan=PRO",
+      `/payment/callback?Authority=${authority}&Status=OK&ownerId=owner-4&plan=PRO`,
       { method: "GET" }
     );
 
     expect(result.status).toBe(200);
     expect(result.body.data.success).toBe(true);
     expect(result.body.data.data.refId).toBe(555);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // 1 call for /billing/checkout's request.json + 1 for the callback's verify.json
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("payment/callback returns 404 when the owner has no subscription to activate", async () => {
 
-    vi.stubGlobal("fetch", vi.fn(async () => ({
-      json: async () => ({ data: { code: 100, ref_id: 1 } }),
-    } as Response)));
+    const fetchMock = stubZarinpal("AUTH-NOSUB", { code: 100, ref_id: 1 });
+    vi.stubGlobal("fetch", fetchMock);
 
+    const apiKey = await createApiKey("owner-nobody");
+
+    const checkout = await call("/billing/checkout", {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ plan: "PRO" }),
+    });
+    const authority = checkout.body.data.data.authority;
+
+    // owner-nobody has a valid checkout intent but never called
+    // /subscribe, so there's nothing to activate.
     const result = await call(
-      "/payment/callback?Authority=AUTH-NOSUB&Status=OK&ownerId=owner-nobody&plan=PRO",
+      `/payment/callback?Authority=${authority}&Status=OK&ownerId=owner-nobody&plan=PRO`,
       { method: "GET" }
     );
 
@@ -156,12 +198,20 @@ describe("Zarinpal payment flow (integration)", () => {
 
   it("payment/callback rejects when Zarinpal reports the payment as not verified", async () => {
 
-    vi.stubGlobal("fetch", vi.fn(async () => ({
-      json: async () => ({ data: { code: -11 } }),
-    } as Response)));
+    const fetchMock = stubZarinpal("AUTH-BAD", { code: -11 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const apiKey = await createApiKey("owner-5");
+
+    const checkout = await call("/billing/checkout", {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ plan: "PRO" }),
+    });
+    const authority = checkout.body.data.data.authority;
 
     const result = await call(
-      "/payment/callback?Authority=AUTH-BAD&Status=OK&ownerId=owner-5&plan=PRO",
+      `/payment/callback?Authority=${authority}&Status=OK&ownerId=owner-5&plan=PRO`,
       { method: "GET" }
     );
 
@@ -182,12 +232,18 @@ describe("Zarinpal payment flow (integration)", () => {
 
     await call("/subscribe", { method: "POST", headers, body: JSON.stringify({}) });
 
-    vi.stubGlobal("fetch", vi.fn(async () => ({
-      json: async () => ({ data: { code: 100, ref_id: 999 } }),
-    } as Response)));
+    const fetchMock = stubZarinpal("AUTH-REAL", { code: 100, ref_id: 999 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const checkout = await call("/billing/checkout", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ plan: "PRO" }),
+    });
+    const authority = checkout.body.data.data.authority;
 
     const callback = await call(
-      "/payment/callback?Authority=AUTH-REAL&Status=OK&ownerId=owner-6&plan=PRO",
+      `/payment/callback?Authority=${authority}&Status=OK&ownerId=owner-6&plan=PRO`,
       { method: "GET" }
     );
     expect(callback.status).toBe(200);
@@ -206,12 +262,18 @@ describe("Zarinpal payment flow (integration)", () => {
     await call("/subscribe", { method: "POST", headers: headersA, body: JSON.stringify({}) });
     await call("/subscribe", { method: "POST", headers: headersB, body: JSON.stringify({}) });
 
-    vi.stubGlobal("fetch", vi.fn(async () => ({
-      json: async () => ({ data: { code: 100, ref_id: 1000 } }),
-    } as Response)));
+    const fetchMock = stubZarinpal("AUTH-A", { code: 100, ref_id: 1000 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const checkout = await call("/billing/checkout", {
+      method: "POST",
+      headers: headersA,
+      body: JSON.stringify({ plan: "PRO" }),
+    });
+    const authority = checkout.body.data.data.authority;
 
     await call(
-      "/payment/callback?Authority=AUTH-A&Status=OK&ownerId=owner-7a&plan=PRO",
+      `/payment/callback?Authority=${authority}&Status=OK&ownerId=owner-7a&plan=PRO`,
       { method: "GET" }
     );
 
@@ -234,30 +296,37 @@ describe("Zarinpal payment flow (integration)", () => {
       .first<{ count: number }>();
     expect(countBefore?.count).toBe(1);
 
-    const fetchMock = vi.fn(async () => ({
-      json: async () => ({ data: { code: 100, ref_id: 4242 } }),
-    } as Response));
+    const fetchMock = stubZarinpal("AUTH-DUPLICATE", { code: 100, ref_id: 4242 });
     vi.stubGlobal("fetch", fetchMock);
 
+    const checkout = await call("/billing/checkout", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ plan: "PRO" }),
+    });
+    const authority = checkout.body.data.data.authority;
+
     const firstCallback = await call(
-      "/payment/callback?Authority=AUTH-DUPLICATE&Status=OK&ownerId=owner-8&plan=PRO",
+      `/payment/callback?Authority=${authority}&Status=OK&ownerId=owner-8&plan=PRO`,
       { method: "GET" }
     );
     expect(firstCallback.status).toBe(200);
     expect(firstCallback.body.data.success).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // 1 call for /billing/checkout's request.json + 1 for the callback's verify.json
+    expect(fetchMock).toHaveBeenCalledTimes(2);
 
     const listAfterFirst = await call("/subscriptions", { headers });
     expect(listAfterFirst.body.data.data).toHaveLength(1);
     expect(listAfterFirst.body.data.data[0].status).toBe("ACTIVE");
 
     const secondCallback = await call(
-      "/payment/callback?Authority=AUTH-DUPLICATE&Status=OK&ownerId=owner-8&plan=PRO",
+      `/payment/callback?Authority=${authority}&Status=OK&ownerId=owner-8&plan=PRO`,
       { method: "GET" }
     );
 
     expect(secondCallback.status).toBeLessThan(500);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Idempotency guard short-circuits before calling Zarinpal again.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
 
     const countAfter = await env.DB
       .prepare(`SELECT COUNT(*) as count FROM subscriptions`)
@@ -267,6 +336,141 @@ describe("Zarinpal payment flow (integration)", () => {
     const listAfterSecond = await call("/subscriptions", { headers });
     expect(listAfterSecond.body.data.data).toHaveLength(1);
     expect(listAfterSecond.body.data.data[0].status).toBe("ACTIVE");
+  });
+
+  describe("ownership scoping (IDOR)", () => {
+
+    it("/subscription only ever returns the authenticated caller's own subscription", async () => {
+      const apiKeyA = await createApiKey("owner-idor-a");
+      const apiKeyB = await createApiKey("owner-idor-b");
+
+      await call("/subscribe", {
+        method: "POST",
+        headers: { "x-api-key": apiKeyA, "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      const asB = await call("/subscription", {
+        headers: { "x-api-key": apiKeyB },
+      });
+
+      expect(asB.status).not.toBe(200);
+      if (asB.body?.data?.data) {
+        expect(asB.body.data.data.ownerId).not.toBe("owner-idor-a");
+      }
+    });
+
+    it("/subscription/cancel only ever cancels the authenticated caller's own subscription", async () => {
+      const apiKeyA = await createApiKey("owner-idor-c1");
+      const apiKeyB = await createApiKey("owner-idor-c2");
+      const headersA = { "x-api-key": apiKeyA, "Content-Type": "application/json" };
+      const headersB = { "x-api-key": apiKeyB, "Content-Type": "application/json" };
+
+      await call("/subscribe", { method: "POST", headers: headersA, body: JSON.stringify({}) });
+      await call("/subscribe", { method: "POST", headers: headersB, body: JSON.stringify({}) });
+
+      await call("/subscription/cancel", { method: "POST", headers: headersB });
+
+      const listA = await call("/subscriptions", { headers: headersA });
+      expect(listA.body.data.data[0].status).toBe("CREATED");
+    });
+
+    it("/billing/invoice is scoped to the authenticated caller and never returns another owner's usage/billing data", async () => {
+      const apiKeyA = await createApiKey("owner-idor-d1");
+      const apiKeyB = await createApiKey("owner-idor-d2");
+
+      await call("/subscribe", {
+        method: "POST",
+        headers: { "x-api-key": apiKeyA, "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      const invoiceB = await call("/billing/invoice", {
+        headers: { "x-api-key": apiKeyB },
+      });
+
+      expect(JSON.stringify(invoiceB.body)).not.toContain("owner-idor-d1");
+    });
+
+    it("SECURITY GAP: /auth/revoke-key lets any authenticated caller revoke any other owner's API key", async () => {
+      const apiKeyA = await createApiKey("owner-revoke-victim");
+      const apiKeyB = await createApiKey("owner-revoke-attacker");
+
+      const revokeAttempt = await call("/auth/revoke-key", {
+        method: "POST",
+        headers: { "x-api-key": apiKeyB, "Content-Type": "application/json" },
+        body: JSON.stringify({ key: apiKeyA }),
+      });
+
+      expect(revokeAttempt.status).not.toBe(200);
+
+      const victimStillWorks = await call("/subscription", {
+        headers: { "x-api-key": apiKeyA },
+      });
+      expect(victimStillWorks.status).not.toBe(401);
+    });
+
+  });
+
+  it("SECURITY GAP: /payment/callback activates whatever ownerId is passed in the query string, with no verification it matches the checkout that produced this Authority", async () => {
+
+    const victimKey = await createApiKey("owner-victim");
+    await call("/subscribe", {
+      method: "POST",
+      headers: { "x-api-key": victimKey, "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      json: async () => ({ data: { code: 100, ref_id: 7777 } }),
+    } as Response)));
+
+    // Note: no /billing/checkout call here on purpose — this Authority
+    // never went through our checkout, exactly like an attacker-supplied
+    // one wouldn't have. There is no payment_intents record for it.
+    const callback = await call(
+      "/payment/callback?Authority=AUTH-ATTACKER-CONTROLLED&Status=OK&ownerId=owner-victim&plan=PRO",
+      { method: "GET" }
+    );
+
+    expect(callback.status).toBe(200);
+
+    const victimSub = await call("/subscription", { headers: { "x-api-key": victimKey } });
+    expect(victimSub.body.data.data.status).not.toBe("ACTIVE");
+  });
+
+  it("BUG: cancelling a subscription before the Zarinpal callback arrives does not prevent a later verified payment from silently reactivating it", async () => {
+
+    const apiKey = await createApiKey("owner-cancel-race");
+    const headers = { "x-api-key": apiKey, "Content-Type": "application/json" };
+
+    await call("/subscribe", { method: "POST", headers, body: JSON.stringify({}) });
+
+    const fetchMock = stubZarinpal("AUTH-LATE", { code: 100, ref_id: 8888 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Real checkout happens first, exactly like the actual user flow:
+    // start checkout, THEN cancel while the Zarinpal callback is still
+    // in flight, THEN the (now-late) callback arrives.
+    const checkout = await call("/billing/checkout", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ plan: "PRO" }),
+    });
+    const authority = checkout.body.data.data.authority;
+
+    const cancel = await call("/subscription/cancel", { method: "POST", headers });
+    expect(cancel.status).toBe(200);
+    expect(cancel.body.data.status).toBe("CANCELED");
+
+    const callback = await call(
+      `/payment/callback?Authority=${authority}&Status=OK&ownerId=owner-cancel-race&plan=PRO`,
+      { method: "GET" }
+    );
+    expect(callback.status).toBe(200);
+
+    const afterCallback = await call("/subscription", { headers });
+    expect(afterCallback.body.data.data.status).toBe("CANCELED");
   });
 
 });

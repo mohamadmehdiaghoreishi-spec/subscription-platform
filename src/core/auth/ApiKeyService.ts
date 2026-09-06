@@ -1,7 +1,9 @@
+// FILE: src/core/auth/ApiKeyService.ts
 import {
   D1ApiKeyRepository,
   ApiKeyEntity
 } from "../../infrastructure/d1/D1ApiKeyRepository";
+import { WorkerError, ErrorCode } from "../errors/WorkerError";
 
 export class ApiKeyService {
 
@@ -44,8 +46,21 @@ export class ApiKeyService {
   }
 
   async revoke(
-    key: string
+    key: string,
+    ownerId: string
   ) {
+
+    const existing =
+      await this.repository.findByKey(key);
+
+    if (!existing || existing.ownerId !== ownerId) {
+
+      throw new WorkerError({
+        code: ErrorCode.FORBIDDEN,
+        message: "You are not allowed to revoke this API key"
+      });
+
+    }
 
     return this.repository.revoke(key);
 
