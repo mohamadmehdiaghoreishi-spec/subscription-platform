@@ -1,0 +1,8 @@
+node_modules/
+*.patch
+.dev.vars
+.env
+.env.*
+.wrangler/
+coverage/
+dist/
