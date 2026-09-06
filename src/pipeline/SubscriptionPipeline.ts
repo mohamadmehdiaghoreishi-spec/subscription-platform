@@ -94,6 +94,10 @@ import { SubscriptionContext }
 from "../core/context/SubscriptionContext";
 
 
+import { Logger }
+from "../core/logging/Logger";
+
+
 
 
 
@@ -399,6 +403,20 @@ await this.paymentRepo.findByAuthority(authority);
 
 if(existingPayment){
 
+Logger.warn("payment.duplicate_callback", {
+
+authority,
+
+ownerId,
+
+reason: "already_processed",
+
+amount: existingPayment.amount,
+
+refId: existingPayment.refId
+
+});
+
 return {
 
 success:true,
@@ -437,7 +455,9 @@ await this.paymentService.verifyPayment(
 
 authority,
 
-amount
+amount,
+
+ownerId
 
 );
 
@@ -480,6 +500,20 @@ if(!claimed){
 
 const winner =
 await this.paymentRepo.findByAuthority(authority);
+
+Logger.warn("payment.duplicate_callback", {
+
+authority,
+
+ownerId,
+
+reason: "concurrent_claim_lost",
+
+amount,
+
+refId: winner?.refId ?? result.refId
+
+});
 
 return {
 
@@ -575,7 +609,9 @@ await this.paymentService.createCheckout(
 
 body.plan,
 
-callbackUrl
+callbackUrl,
+
+context.ownerId
 
 );
 

@@ -1,5 +1,6 @@
 import { WorkerError } from "../errors/WorkerError";
 import { ErrorCode } from "../errors/ErrorCode";
+import { Logger } from "../logging/Logger";
 
 export interface ZarinpalPaymentRequest {
 
@@ -80,6 +81,13 @@ export class ZarinpalClient {
     const json = await response.json() as any;
 
     if (!json.data || json.data.code !== 100) {
+
+      Logger.error("payment.gateway_error", {
+        provider: "zarinpal",
+        operation: "requestPayment",
+        amount: input.amount,
+        reason: json.errors ?? json
+      });
 
       throw new WorkerError({
         code: ErrorCode.PAYMENT_GATEWAY_ERROR,
