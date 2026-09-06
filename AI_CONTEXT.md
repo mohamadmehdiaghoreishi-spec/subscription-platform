@@ -4,6 +4,8 @@
 > For project state and bugs: PROJECT_CONTEXT.md
 > For permanent rules: CLAUDE.md and PROJECT_RULES.md
 
+⚠️ ZarinPal merchant ID is currently a placeholder — real payments are not yet live.
+
 ---
 
 ## 1. Pipeline Flow
@@ -18,7 +20,7 @@ SubscriptionPipeline.execute()
 [PUBLIC ROUTES — no auth]
   ├── GET  /                → health check
   ├── POST /auth/create-key → ApiKeyService.create()
-  └── POST /webhook/stripe  → PaymentService.verifyWebhook()
+  └── GET  /payment/callback → PaymentService.verifyCallback()
   ↓
 AuthGuard.authenticate()       reads x-api-key → returns SubscriptionContext
   ↓
